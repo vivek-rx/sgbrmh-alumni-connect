@@ -14,7 +14,7 @@ This project is built by our hostel for our hostel — so every small contributi
    git clone https://github.com/vivek-rx/sgbrmh-alumni-connect.git
    ```
    ```bash
-   cd hostel-alumni-network
+   cd sgbrmh-alumni-connect
    ```
 
 4. **Create a new branch** for your work:
