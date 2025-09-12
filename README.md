@@ -50,3 +50,14 @@ All contributions are welcomed — code, docs, designs, ideas.
 
 **Please read the full contribution guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
 
+---
+
+
+## 📊 Project Stats
+
+![GitHub stars](https://img.shields.io/github/stars/vivek-rx/sgbrmh-alumni-connect)
+![GitHub forks](https://img.shields.io/github/forks/vivek-rx/sgbrmh-alumni-connect)
+![GitHub issues](https://img.shields.io/github/issues/vivek-rx/sgbrmh-alumni-connect)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/vivek-rx/sgbrmh-alumni-connect)
+
+---
