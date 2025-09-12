@@ -44,6 +44,17 @@ All suggestions from contributors are welcome and will be discussed with the tea
 
  ---
 
+## 🐛 Bug Reports & Feature Requests
+
+Found a bug or have a feature idea? We'd love to hear from you!
+
+- **Bug Reports**: [Create an Issue](https://github.com/vivek-rx/sgbrmh-alumni-connect/issues/new?template=bug_report.md)
+- **Feature Requests**: [Create an Issue](https://github.com/vivek-rx/sgbrmh-alumni-connect/issues/new?template=feature_request.md)
+- **General Discussion**: [GitHub Discussions](https://github.com/vivek-rx/sgbrmh-alumni-connect/discussions)
+
+---
+
+
  ## How to Contribute
 
 All contributions are welcomed — code, docs, designs, ideas.
