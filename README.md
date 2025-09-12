@@ -72,3 +72,7 @@ All contributions are welcomed — code, docs, designs, ideas.
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/vivek-rx/sgbrmh-alumni-connect)
 
 ---
+
+**Built with ❤️ by SGBRMH Alumni Community**
+
+*Connecting generations, empowering futures* 🌟
