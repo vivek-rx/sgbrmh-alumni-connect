@@ -1,33 +1,23 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  
-  console.log('🔍 Profile Component: === STARTING RENDER ===');
-  console.log('🔍 Profile Component: Component mounted/re-rendered at:', new Date().toISOString());
-  console.log('🔍 Profile Component: Render count:', renderCount.current);
+  console.log('🔍 Profile Component: Starting render at', new Date().toISOString());
   
   const { user, profile, updateProfile, loading } = useAuth();
-  console.log('🔍 Profile Component: Auth hook results:', {
-    hasUser: !!user,
-    hasProfile: !!profile,
-    loading,
-    userEmail: user?.email,
-    profileId: profile?.id,
-    profileName: profile?.name
-  });
   console.log('🔍 Profile Component: Auth values:', {
     user: user ? { id: user.id, email: user.email } : null,
-    profile: profile ? { id: profile.id, name: profile.name, email: profile.email } : null,
-    loading
+    profile: profile ? { id: profile.id, name: profile.name, email: profile.email, profile_completed: profile.profile_completed } : null,
+    loading,
+    hasUser: !!user,
+    hasProfile: !!profile,
+    authLoading: loading
   });
   
   const [isEditing, setIsEditing] = useState(false);
-  console.log('🔍 Profile Component: State initialized - isEditing:', isEditing);
+  console.log('🔍 Profile Component: Edit state:', isEditing);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -52,18 +42,25 @@ export default function Profile() {
 
   // Load profile data into form
   useEffect(() => {
-    console.log('🔍 Profile useEffect: === EFFECT TRIGGERED ===');
-    console.log('🔍 Profile useEffect: Dependencies check:', {
+    console.log('🔍 Profile useEffect: Running with profile:', profile ? 'Profile exists' : 'No profile');
+    console.log('🔍 Profile useEffect: Profile details:', {
       hasProfile: !!profile,
       profileId: profile?.id,
       profileEmail: profile?.email,
-      profileCompleted: profile?.profile_completed,
-      loading
+      profileName: profile?.name,
+      profileCompleted: profile?.profile_completed
     });
     
     if (profile) {
-      console.log('🔍 Profile useEffect: Profile exists, setting form data');
-      console.log('🔍 Profile useEffect: Full profile data:', profile);
+      console.log('🔍 Profile useEffect: Setting form data with profile data');
+      console.log('🔍 Profile useEffect: Profile data being loaded:', {
+        name: profile.name,
+        email: profile.email,
+        phone: profile.phone,
+        batch_year: profile.batch_year,
+        gender: profile.gender,
+        bio: profile.bio
+      });
       setFormData({
         name: profile.name || '',
         phone: profile.phone || '',
@@ -85,48 +82,39 @@ export default function Profile() {
         current_country: profile.current_country || ''
       });
       console.log('🔍 Profile useEffect: Form data set successfully');
+    } else if (user && !loading) {
+      // Initialize form for new profile creation
+      console.log('🔍 Profile useEffect: Initializing form for new profile creation');
+      setFormData({
+        name: user?.user_metadata?.name || user?.email?.split('@')[0] || '',
+        phone: '',
+        batch_year: '',
+        gender: '',
+        marital_status: '',
+        date_of_birth: '',
+        age: '',
+        bio: '',
+        whatsapp_number: '',
+        facebook_url: '',
+        instagram_url: '',
+        twitter_url: '',
+        linkedin_url: '',
+        snapchat_url: '',
+        github_url: '',
+        portfolio_url: '',
+        current_city: '',
+        current_country: ''
+      });
     } else {
-      console.log('🔍 Profile useEffect: No profile data available yet');
+      console.log('🔍 Profile useEffect: No profile data available yet or still loading');
     }
-    console.log('🔍 Profile useEffect: === EFFECT COMPLETED ===');
-  }, [profile]);
-
-  // Add cleanup effect to track unmounting
-  useEffect(() => {
-    console.log('🔍 Profile Component: Mount effect triggered');
-    return () => {
-      console.log('🔍 Profile Component: === COMPONENT UNMOUNTING ===');
-      console.log('🔍 Profile Component: Cleanup at:', new Date().toISOString());
-    };
-  }, []);
-
-  // Track loading state changes
-  useEffect(() => {
-    console.log('🔍 Profile Component: Loading state changed to:', loading);
-    console.log('🔍 Profile Component: Auth state when loading changed:', {
-      hasUser: !!user,
-      hasProfile: !!profile,
-      loading,
-      timestamp: new Date().toISOString()
-    });
-  }, [loading]);
-
-  console.log('🔍 Profile Component: Pre-render decision point:', {
-    loading,
-    hasUser: !!user,
-    hasProfile: !!profile,
-    isEditing,
-    formDataKeys: Object.keys(formData),
-    renderCount: renderCount.current,
-    timestamp: new Date().toISOString()
-  });
+  }, [profile, user, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔍 Profile handleSubmit: === FORM SUBMISSION STARTED ===');
-    console.log('🔍 Profile handleSubmit: Event:', e);
+    console.log('🔍 Profile handleSubmit: Form submission triggered at', new Date().toISOString());
     console.log('🔍 Profile handleSubmit: Current form data:', formData);
-    console.log('🔍 Profile handleSubmit: Current profile:', profile);
+    console.log('🔍 Profile handleSubmit: Current profile:', profile ? { id: profile.id, email: profile.email } : 'No profile');
     
     try {
       // Prepare update data, converting strings to appropriate types
@@ -165,19 +153,10 @@ export default function Profile() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    console.log('🔍 Profile handleChange: Field changed:', {
-      fieldName: e.target.name,
-      newValue: e.target.value,
-      oldValue: formData[e.target.name as keyof typeof formData],
-      timestamp: new Date().toISOString()
-    });
-    
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-    
-    console.log('🔍 Profile handleChange: Form data updated');
   };
 
   if (loading) {
@@ -192,10 +171,28 @@ export default function Profile() {
     );
   }
 
+  console.log('🔍 Profile Component: Render decision logic:', {
+    hasUser: !!user,
+    hasProfile: !!profile,
+    loading,
+    timestamp: new Date().toISOString()
+  });
+
+  if (loading) {
+    console.log('🔍 Profile Component: Auth still loading - showing loading state');
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading profile...</p>
+          <p className="text-sm text-gray-500 mt-2">Debug: Auth loading state</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
-    console.log('🔍 Profile Component: === NO USER STATE ===');
-    console.log('🔍 Profile Component: User is null/undefined');
-    console.log('🔍 Profile Component: Auth state:', { user, profile, loading });
+    console.log('🔍 Profile Component: No user found - rendering not found state');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -212,41 +209,119 @@ export default function Profile() {
   }
 
   if (!profile) {
-    console.log('🔍 Profile Component: === NO PROFILE STATE ===');
-    console.log('🔍 Profile Component: User exists but profile is null');
-    console.log('🔍 Profile Component: Detailed auth state:', {
-      userId: user?.id,
-      userEmail: user?.email,
-      profile,
-      loading,
-      timestamp: new Date().toISOString()
-    });
+    console.log('🔍 Profile Component: User exists but no profile - allowing profile creation');
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Profile not found</p>
-          <p className="text-sm text-gray-500 mt-2">You may need to complete your profile setup</p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Debug: User: {user ? user.email : 'Not found'}</p>
-            <p>Debug: Profile: {profile ? 'Found' : 'Not found'}</p>
-            <p>Debug: Loading: {loading ? 'True' : 'False'}</p>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {/* Header */}
+            <div className="bg-primary text-white px-6 py-8">
+              <div className="flex items-center">
+                <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center">
+                  <User className="h-12 w-12 text-primary" />
+                </div>
+                <div className="ml-6">
+                  <h1 className="text-3xl font-bold">Complete Your Profile</h1>
+                  <p className="text-primary-light mt-2">Welcome! Let's set up your alumni profile</p>
+                  <p className="text-primary-light text-sm mt-1">{user?.email}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Profile Creation Form */}
+            <div className="p-6">
+              <form 
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Email (Read-only) */}
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                      Email Address (Read-only)
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      readOnly
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50"
+                      value={user?.email || ''}
+                    />
+                  </div>
+
+                  {/* Name */}
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      name="name"
+                      required
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      value={formData.name}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  {/* Batch Year */}
+                  <div>
+                    <label htmlFor="batch_year" className="block text-sm font-medium text-gray-700">
+                      Batch Year *
+                    </label>
+                    <input
+                      type="number"
+                      id="batch_year"
+                      name="batch_year"
+                      required
+                      min="1950"
+                      max="2030"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      value={formData.batch_year}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      value={formData.phone}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark flex items-center transition-colors"
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Create Profile
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  console.log('🔍 Profile Component: === MAIN RENDER ===');
-  console.log('🔍 Profile Component: Successfully passed all checks, rendering main UI');
-  console.log('🔍 Profile Component: Final render state:', {
-    user: { id: user.id, email: user.email },
-    profile: { id: profile.id, name: profile.name, email: profile.email },
-    formData,
-    isEditing,
-    loading,
-    timestamp: new Date().toISOString()
-  });
+  console.log('🔍 Profile Component: Rendering main profile UI');
+  console.log('🔍 Profile Component: Form data state:', formData);
+  console.log('🔍 Profile Component: Is editing:', isEditing);
   
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -275,11 +350,7 @@ export default function Profile() {
               </div>
             </div>
             <button
-              onClick={() => {
-                console.log('🔍 Profile: Edit/Cancel button clicked. Current isEditing:', isEditing);
-                console.log('🔍 Profile: Toggling edit mode to:', !isEditing);
-                setIsEditing(!isEditing);
-              }}
+              onClick={() => setIsEditing(!isEditing)}
               className="bg-white text-primary px-4 py-2 rounded-md hover:bg-gray-100 flex items-center transition-colors"
             >
               {isEditing ? (

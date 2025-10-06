@@ -59,6 +59,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🔍 Auth: Initializing auth state...');
     
+    // Set a maximum timeout to prevent infinite loading
+    const maxLoadingTimeout = setTimeout(() => {
+      console.log('⏰ Auth: Maximum loading timeout reached, forcing loading to false');
+      setLoading(false);
+    }, 15000); // 15 second timeout
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('🔍 Auth: Initial session check:', session ? 'Session found' : 'No session');
@@ -70,6 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔍 Auth: No user, setting loading to false');
         setLoading(false);
       }
+      clearTimeout(maxLoadingTimeout);
+    }).catch((error) => {
+      console.error('❌ Auth: Error getting initial session:', error);
+      setLoading(false);
+      clearTimeout(maxLoadingTimeout);
     });
 
     // Listen for auth changes
@@ -80,7 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         console.log('🔍 Auth: User authenticated, fetching profile...');
-        await fetchProfile(session.user.id);
+        try {
+          await fetchProfile(session.user.id);
+        } catch (error) {
+          console.error('❌ Auth: Error fetching profile on auth change:', error);
+          setLoading(false);
+        }
       } else {
         console.log('🔍 Auth: User signed out, clearing profile');
         setProfile(null);
@@ -88,7 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(maxLoadingTimeout);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -126,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('❌ Auth: Profile fetch failed with exception:', error);
       setProfile(null);
     } finally {
-      console.log('🏁 Auth: Setting loading to false');
+      console.log('🏁 Auth: Setting loading to false after profile fetch attempt');
       setLoading(false);
     }
   };

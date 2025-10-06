@@ -130,6 +130,9 @@ export default function Login() {
         if (profile.role === 'admin') {
           console.log('➡️ Redirecting to admin dashboard');
           navigate('/admin', { replace: true });
+        } else if (!profile.profile_completed) {
+          console.log('➡️ Redirecting to profile completion');
+          navigate('/profile/complete', { replace: true });
         } else {
           console.log('➡️ Redirecting to home page');
           navigate('/', { replace: true });
@@ -142,6 +145,8 @@ export default function Login() {
           console.log('⚠️ Fallback: Using window.location redirect');
           if (profile.role === 'admin') {
             window.location.href = '/admin';
+          } else if (!profile.profile_completed) {
+            window.location.href = '/profile/complete';  
           } else {
             window.location.href = '/';
           }
@@ -152,6 +157,8 @@ export default function Login() {
         // Force redirect if React Router fails
         if (profile.role === 'admin') {
           window.location.href = '/admin';
+        } else if (!profile.profile_completed) {
+          window.location.href = '/profile/complete';
         } else {
           window.location.href = '/';
         }
