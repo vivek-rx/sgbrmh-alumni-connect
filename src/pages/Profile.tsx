@@ -1,12 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  console.log('🔍 Profile Component: Starting render');
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  
+  console.log('🔍 Profile Component: === STARTING RENDER ===');
+  console.log('🔍 Profile Component: Component mounted/re-rendered at:', new Date().toISOString());
+  console.log('🔍 Profile Component: Render count:', renderCount.current);
   
   const { user, profile, updateProfile, loading } = useAuth();
+  console.log('🔍 Profile Component: Auth hook results:', {
+    hasUser: !!user,
+    hasProfile: !!profile,
+    loading,
+    userEmail: user?.email,
+    profileId: profile?.id,
+    profileName: profile?.name
+  });
   console.log('🔍 Profile Component: Auth values:', {
     user: user ? { id: user.id, email: user.email } : null,
     profile: profile ? { id: profile.id, name: profile.name, email: profile.email } : null,
@@ -14,6 +27,7 @@ export default function Profile() {
   });
   
   const [isEditing, setIsEditing] = useState(false);
+  console.log('🔍 Profile Component: State initialized - isEditing:', isEditing);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -38,9 +52,18 @@ export default function Profile() {
 
   // Load profile data into form
   useEffect(() => {
-    console.log('🔍 Profile useEffect: Running with profile:', profile);
+    console.log('🔍 Profile useEffect: === EFFECT TRIGGERED ===');
+    console.log('🔍 Profile useEffect: Dependencies check:', {
+      hasProfile: !!profile,
+      profileId: profile?.id,
+      profileEmail: profile?.email,
+      profileCompleted: profile?.profile_completed,
+      loading
+    });
+    
     if (profile) {
-      console.log('🔍 Profile useEffect: Setting form data with profile data');
+      console.log('🔍 Profile useEffect: Profile exists, setting form data');
+      console.log('🔍 Profile useEffect: Full profile data:', profile);
       setFormData({
         name: profile.name || '',
         phone: profile.phone || '',
@@ -65,11 +88,45 @@ export default function Profile() {
     } else {
       console.log('🔍 Profile useEffect: No profile data available yet');
     }
+    console.log('🔍 Profile useEffect: === EFFECT COMPLETED ===');
   }, [profile]);
+
+  // Add cleanup effect to track unmounting
+  useEffect(() => {
+    console.log('🔍 Profile Component: Mount effect triggered');
+    return () => {
+      console.log('🔍 Profile Component: === COMPONENT UNMOUNTING ===');
+      console.log('🔍 Profile Component: Cleanup at:', new Date().toISOString());
+    };
+  }, []);
+
+  // Track loading state changes
+  useEffect(() => {
+    console.log('🔍 Profile Component: Loading state changed to:', loading);
+    console.log('🔍 Profile Component: Auth state when loading changed:', {
+      hasUser: !!user,
+      hasProfile: !!profile,
+      loading,
+      timestamp: new Date().toISOString()
+    });
+  }, [loading]);
+
+  console.log('🔍 Profile Component: Pre-render decision point:', {
+    loading,
+    hasUser: !!user,
+    hasProfile: !!profile,
+    isEditing,
+    formDataKeys: Object.keys(formData),
+    renderCount: renderCount.current,
+    timestamp: new Date().toISOString()
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔍 Profile handleSubmit: Starting save with form data:', formData);
+    console.log('🔍 Profile handleSubmit: === FORM SUBMISSION STARTED ===');
+    console.log('🔍 Profile handleSubmit: Event:', e);
+    console.log('🔍 Profile handleSubmit: Current form data:', formData);
+    console.log('🔍 Profile handleSubmit: Current profile:', profile);
     
     try {
       // Prepare update data, converting strings to appropriate types
@@ -108,10 +165,19 @@ export default function Profile() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    console.log('🔍 Profile handleChange: Field changed:', {
+      fieldName: e.target.name,
+      newValue: e.target.value,
+      oldValue: formData[e.target.name as keyof typeof formData],
+      timestamp: new Date().toISOString()
+    });
+    
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    
+    console.log('🔍 Profile handleChange: Form data updated');
   };
 
   if (loading) {
@@ -127,7 +193,9 @@ export default function Profile() {
   }
 
   if (!user) {
-    console.log('🔍 Profile Component: No user found - rendering not found state');
+    console.log('🔍 Profile Component: === NO USER STATE ===');
+    console.log('🔍 Profile Component: User is null/undefined');
+    console.log('🔍 Profile Component: Auth state:', { user, profile, loading });
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -144,7 +212,15 @@ export default function Profile() {
   }
 
   if (!profile) {
-    console.log('🔍 Profile Component: User exists but no profile - might need profile creation');
+    console.log('🔍 Profile Component: === NO PROFILE STATE ===');
+    console.log('🔍 Profile Component: User exists but profile is null');
+    console.log('🔍 Profile Component: Detailed auth state:', {
+      userId: user?.id,
+      userEmail: user?.email,
+      profile,
+      loading,
+      timestamp: new Date().toISOString()
+    });
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -161,9 +237,16 @@ export default function Profile() {
     );
   }
 
-  console.log('🔍 Profile Component: Rendering main profile UI');
-  console.log('🔍 Profile Component: Form data state:', formData);
-  console.log('🔍 Profile Component: Is editing:', isEditing);
+  console.log('🔍 Profile Component: === MAIN RENDER ===');
+  console.log('🔍 Profile Component: Successfully passed all checks, rendering main UI');
+  console.log('🔍 Profile Component: Final render state:', {
+    user: { id: user.id, email: user.email },
+    profile: { id: profile.id, name: profile.name, email: profile.email },
+    formData,
+    isEditing,
+    loading,
+    timestamp: new Date().toISOString()
+  });
   
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -192,7 +275,11 @@ export default function Profile() {
               </div>
             </div>
             <button
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => {
+                console.log('🔍 Profile: Edit/Cancel button clicked. Current isEditing:', isEditing);
+                console.log('🔍 Profile: Toggling edit mode to:', !isEditing);
+                setIsEditing(!isEditing);
+              }}
               className="bg-white text-primary px-4 py-2 rounded-md hover:bg-gray-100 flex items-center transition-colors"
             >
               {isEditing ? (
@@ -652,9 +739,10 @@ export default function Profile() {
                 )}
 
                 {/* Links */}
-                {(profile.linkedin_url || profile.github_url || profile.portfolio_url) && (
+                {(profile.linkedin_url || profile.github_url || profile.portfolio_url || 
+                  profile.facebook_url || profile.instagram_url || profile.twitter_url || profile.snapchat_url) && (
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">Links</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-3">Links & Social Media</h3>
                     <div className="flex flex-wrap gap-3">
                       {profile.linkedin_url && (
                         <a
@@ -687,6 +775,50 @@ export default function Profile() {
                         >
                           <Globe className="h-4 w-4 mr-2" />
                           Portfolio
+                        </a>
+                      )}
+                      {profile.facebook_url && (
+                        <a
+                          href={profile.facebook_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors"
+                        >
+                          <Globe className="h-4 w-4 mr-2" />
+                          Facebook
+                        </a>
+                      )}
+                      {profile.instagram_url && (
+                        <a
+                          href={profile.instagram_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center px-3 py-2 bg-pink-50 text-pink-600 rounded-md hover:bg-pink-100 transition-colors"
+                        >
+                          <Globe className="h-4 w-4 mr-2" />
+                          Instagram
+                        </a>
+                      )}
+                      {profile.twitter_url && (
+                        <a
+                          href={profile.twitter_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center px-3 py-2 bg-sky-50 text-sky-600 rounded-md hover:bg-sky-100 transition-colors"
+                        >
+                          <Globe className="h-4 w-4 mr-2" />
+                          Twitter
+                        </a>
+                      )}
+                      {profile.snapchat_url && (
+                        <a
+                          href={profile.snapchat_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center px-3 py-2 bg-yellow-50 text-yellow-600 rounded-md hover:bg-yellow-100 transition-colors"
+                        >
+                          <Globe className="h-4 w-4 mr-2" />
+                          Snapchat
                         </a>
                       )}
                     </div>
