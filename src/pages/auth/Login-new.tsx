@@ -6,8 +6,6 @@ import { supabase } from '../../lib/supabase';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Login() {
-  console.log('🔑 Login: Component rendering...');
-  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -37,16 +35,7 @@ export default function Login() {
         password: formData.password,
       });
 
-      console.log('🔑 Login Response:', { 
-        user: authData?.user ? { 
-          id: authData.user.id, 
-          email: authData.user.email, 
-          email_confirmed_at: authData.user.email_confirmed_at,
-          role: authData.user.role 
-        } : null, 
-        session: !!authData?.session,
-        error: authError 
-      });
+      console.log('🔑 Login Response:', { authData, authError });
 
       if (authError) {
         console.error('❌ Login Error:', authError);
@@ -61,99 +50,36 @@ export default function Login() {
           return;
         }
         
-        if (authError.message.includes('email not confirmed')) {
-          toast.error('Please verify your email before logging in. Check your inbox for the confirmation link.');
-          return;
-        }
-        
         throw authError;
       }
 
-      if (!authData.user) {
-        console.error('❌ No user data returned');
-        toast.error('Login failed: No user data received');
-        return;
-      }
-
-      console.log('✅ User logged in:', authData.user.id);
-      console.log('📧 Email confirmed:', authData.user.email_confirmed_at);
-
-      // Check if email is confirmed
-      if (!authData.user.email_confirmed_at) {
-        console.error('❌ Email not confirmed');
-        toast.error('Please verify your email before logging in. Check your inbox for the confirmation link.');
-        return;
-      }
-      
-      // Check if user profile exists in alumni table
-      console.log('🔍 Looking up user profile...');
-      const { data: profile, error: profileError } = await supabase
-        .from('alumni')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-
-      console.log('👤 Profile lookup result:', { profile, profileError });
-
-      if (profileError) {
-        console.error('❌ Profile Error:', profileError);
+      if (authData.user) {
+        console.log('✅ User logged in:', authData.user.id);
+        console.log('📧 Email confirmed:', authData.user.email_confirmed_at);
         
-        if (profileError.code === 'PGRST116') {
-          toast.error('User profile not found. Please register again or contact support.');
-        } else {
-          toast.error(`Profile lookup failed: ${profileError.message}`);
+        // Check if user profile exists in alumni table
+        const { data: profile, error: profileError } = await supabase
+          .from('alumni')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+
+        console.log('👤 Profile lookup:', { profile, profileError });
+
+        if (profileError) {
+          console.error('❌ Profile Error:', profileError);
+          toast.error('Profile not found. Please contact support.');
+          return;
         }
-        return;
-      }
 
-      if (!profile) {
-        console.error('❌ No profile data returned');
-        toast.error('User profile not found. Please contact support.');
-        return;
-      }
-
-      console.log('🎉 Login successful!');
-      console.log('👤 User profile:', { name: profile.name, role: profile.role, verified: profile.verified });
-      
-      toast.success(`Welcome back, ${profile.name}!`);
-      
-      // Add a small delay to ensure auth context is updated
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Redirect based on user role or profile completion  
-      console.log('🔄 Redirecting user...');
-      console.log('👤 Profile role:', profile.role);
-      console.log('✅ Profile completed:', profile.profile_completed);
-      
-      // Try React Router navigation first, with fallback to window.location
-      try {
+        console.log('🎉 Login successful!');
+        toast.success(`Welcome back, ${profile.name}!`);
+        
+        // Redirect based on user role
         if (profile.role === 'admin') {
-          console.log('➡️ Redirecting to admin dashboard');
-          navigate('/admin', { replace: true });
+          navigate('/admin');
         } else {
-          console.log('➡️ Redirecting to home page');
-          navigate('/', { replace: true });
-        }
-        
-        console.log('✅ React Router redirect initiated');
-        
-        // Fallback: if navigation doesn't work after 2 seconds, force reload
-        setTimeout(() => {
-          console.log('⚠️ Fallback: Using window.location redirect');
-          if (profile.role === 'admin') {
-            window.location.href = '/admin';
-          } else {
-            window.location.href = '/';
-          }
-        }, 2000);
-        
-      } catch (navError) {
-        console.error('❌ Navigation error:', navError);
-        // Force redirect if React Router fails
-        if (profile.role === 'admin') {
-          window.location.href = '/admin';
-        } else {
-          window.location.href = '/';
+          navigate('/');
         }
       }
     } catch (error: any) {
@@ -163,22 +89,8 @@ export default function Login() {
         code: error.code,
         details: error.details,
         hint: error.hint,
-        status: error.status
       });
-      
-      let errorMessage = 'Failed to log in. ';
-      
-      if (error.message?.includes('fetch')) {
-        errorMessage += 'Network connection issue. Please check your internet connection.';
-      } else if (error.message?.includes('timeout')) {
-        errorMessage += 'Request timed out. Please try again.';
-      } else if (error.message?.includes('permission denied')) {
-        errorMessage += 'Database permission error. Please contact support.';
-      } else {
-        errorMessage += error.message || 'Please try again.';
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error.message || 'Failed to log in');
     } finally {
       setLoading(false);
     }
@@ -193,11 +105,7 @@ export default function Login() {
     setResendingEmail(true);
 
     try {
-      console.log('📧 Resending confirmation email to:', formData.email);
-      console.log('🔗 Redirect URL:', `${window.location.origin}/auth/callback`);
-      
-      // First try the standard resend method
-      const { data, error } = await supabase.auth.resend({
+      const { error } = await supabase.auth.resend({
         type: 'signup',
         email: formData.email,
         options: {
@@ -205,71 +113,12 @@ export default function Login() {
         },
       });
 
-      console.log('📤 Resend response:', { data, error });
-
-      if (error) {
-        console.error('❌ Resend error:', error);
-        
-        // Handle specific error cases
-        if (error.message?.includes('rate limit') || error.message?.includes('too many requests')) {
-          toast.error('Please wait a few minutes before requesting another email');
-          return;
-        }
-        
-        if (error.message?.includes('not found') || error.message?.includes('does not exist')) {
-          toast.error('Email address not found. Please register first.');
-          return;
-        }
-        
-        if (error.message?.includes('already confirmed') || error.message?.includes('email_confirmed_at')) {
-          toast.error('This email is already confirmed. Try logging in directly.');
-          return;
-        }
-
-        // If resend fails, try alternative approach - trigger a password reset instead
-        console.log('🔄 Trying alternative method - password reset flow');
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(formData.email, {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        });
-        
-        if (resetError) {
-          console.error('❌ Alternative method also failed:', resetError);
-          throw error; // Throw original error
-        } else {
-          console.log('✅ Alternative confirmation sent via password reset');
-          toast.success('Verification email sent via alternative method! Please check your inbox.');
-          return;
-        }
-      }
+      if (error) throw error;
       
-      console.log('✅ Confirmation email resent successfully');
-      toast.success('Confirmation email sent! Please check your inbox and spam folder.');
+      toast.success('Confirmation email sent! Please check your inbox.');
     } catch (error: any) {
-      console.error('💥 Resend email error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        status: error.status
-      });
-      
-      // Provide helpful error messages based on common issues
-      let errorMessage = 'Failed to resend confirmation email. ';
-      
-      if (error.message?.includes('fetch')) {
-        errorMessage += 'Network connection issue. Please check your internet connection.';
-      } else if (error.message?.includes('timeout')) {
-        errorMessage += 'Request timed out. Please try again.';
-      } else if (error.status === 429) {
-        errorMessage += 'Too many requests. Please wait a few minutes.';
-      } else if (error.status === 400) {
-        errorMessage += 'Invalid request. Please check your email address.';
-      } else {
-        errorMessage += error.message || 'Please try again or contact support.';
-      }
-      
-      toast.error(errorMessage);
+      console.error('Resend email error:', error);
+      toast.error(error.message || 'Failed to resend confirmation email');
     } finally {
       setResendingEmail(false);
     }

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { AlumniCard } from '@/components/AlumniCard';
-import { Search, Filter, Users } from 'lucide-react';
+import { Search, Filter, Users, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
 // Sample data - replace with real data from your database later

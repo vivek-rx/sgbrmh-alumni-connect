@@ -54,18 +54,26 @@ export function Footer() {
               Contact Us
             </h3>
             <div className="space-y-3">
-              <p className="flex items-center">
-                <MapPin className="h-5 w-5 mr-2" />
-                123 Hostel Road, Pune, Maharashtra
-              </p>
+              <a 
+                href="https://maps.app.goo.gl/gRbxCyujnvwmuU5Y6" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center hover:text-white transition-colors cursor-pointer"
+              >
+                <MapPin className="h-6 w-5 mr-2" />
+                1,1 Sai Nagar, Sukhsagar Nagar, Katraj, Pune, Maharashtra 411048
+              </a>
               <p className="flex items-center">
                 <Phone className="h-5 w-5 mr-2" />
                 +91 98765 43210
               </p>
-              <p className="flex items-center">
+              <a 
+                href="mailto:abmectpune@gmail.com" 
+                className="flex items-center hover:text-white transition-colors cursor-pointer"
+              >
                 <Mail className="h-5 w-5 mr-2" />
-                contact@gbrathihostel.org
-              </p>
+                abmectpune@gmail.com
+              </a>
             </div>
           </div>
         </div>
