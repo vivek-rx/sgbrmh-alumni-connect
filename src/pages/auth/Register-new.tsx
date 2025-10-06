@@ -2,12 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, User, Mail, Phone, Calendar, MapPin, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Register() {
-  console.log('📝 Register: Component rendering...');
-  
   const [formData, setFormData] = useState({
     // COMPULSORY FIELDS
     name: '',
@@ -136,7 +134,7 @@ export default function Register() {
   };
 
   const currentYear = new Date().getFullYear();
-  const batchYears = Array.from({ length: currentYear - 2019 + 10 }, (_, i) => 2029 - i);
+  const batchYears = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 py-12 px-4 sm:px-6 lg:px-8">

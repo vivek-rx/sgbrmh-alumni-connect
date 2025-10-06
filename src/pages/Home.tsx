@@ -1,8 +1,10 @@
 import { Users, BookOpen, Calendar, Briefcase } from 'lucide-react';
-import { Hero } from '@/components/Hero';
-import { FeatureCard } from '@/components/FeatureCard';
-import { About } from '@/components/About';
-import { CallToAction } from '@/components/CallToAction';
+import { Hero } from '../components/Hero';
+import { FeatureCard } from '../components/FeatureCard';
+import { About } from '../components/About';
+import { Statistics } from '../components/Statistics';
+import { CallToAction } from '../components/CallToAction';
+import { motion } from 'framer-motion';
 
 export default function Home() {
   const features = [
@@ -38,51 +40,80 @@ export default function Home() {
       
       <About />
 
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
+      {/* Features Section with Staggered Layout */}
+      <section className="relative py-20 bg-gradient-to-br from-gray-50 via-orange-50/30 to-red-50/20 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <svg width="100%" height="100%" viewBox="0 0 100 100">
+            <defs>
+              <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+                <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-4xl font-bold text-gray-900 sm:text-5xl mb-6">
               Platform Features
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
+            <div className="w-24 h-1 bg-gradient-to-r from-orange-500 to-red-500 mx-auto rounded-full mb-4"></div>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
               Everything you need to connect, share and grow with the hostel community
             </p>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature) => (
+          {/* Staggered Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-2">
               <FeatureCard
-                key={feature.title}
-                title={feature.title}
-                description={feature.description}
-                icon={feature.icon}
-                link={feature.link}
+                title={features[0].title}
+                description={features[0].description}
+                icon={features[0].icon}
+                link={features[0].link}
+                delay={0.2}
               />
-            ))}
+            </div>
+            <div className="lg:col-span-2 lg:mt-12">
+              <FeatureCard
+                title={features[1].title}
+                description={features[1].description}
+                icon={features[1].icon}
+                link={features[1].link}
+                delay={0.4}
+              />
+            </div>
+            <div className="lg:col-span-2 lg:-mt-6">
+              <FeatureCard
+                title={features[2].title}
+                description={features[2].description}
+                icon={features[2].icon}
+                link={features[2].link}
+                delay={0.6}
+              />
+            </div>
+            <div className="lg:col-span-2 lg:mt-6">
+              <FeatureCard
+                title={features[3].title}
+                description={features[3].description}
+                icon={features[3].icon}
+                link={features[3].link}
+                delay={0.8}
+              />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Statistics Section */}
-      <section className="py-16 bg-primary">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 text-center">
-            <div className="text-white">
-              <div className="text-4xl font-bold">500+</div>
-              <div className="mt-2">Alumni Members</div>
-            </div>
-            <div className="text-white">
-              <div className="text-4xl font-bold">50+</div>
-              <div className="mt-2">Years Legacy</div>
-            </div>
-            <div className="text-white">
-              <div className="text-4xl font-bold">100+</div>
-              <div className="mt-2">Active Mentors</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <Statistics />
 
       <CallToAction />
     </div>

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
@@ -10,10 +10,14 @@ import Events from './pages/Events'
 import Profile from './pages/Profile'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import Callback from './pages/auth/Callback'
 import Admin from './pages/Admin'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
+  const location = useLocation();
+  console.log('🚀 App: Rendering with route:', location.pathname);
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -25,6 +29,7 @@ function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
+          <Route path="/auth/callback" element={<Callback />} />
           <Route 
             path="/profile" 
             element={
