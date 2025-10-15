@@ -1,0 +1,69 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: 234 88 12; /* orange-600 */
+    --color-secondary: 153 27 27; /* red-800 */
+    --color-accent: 234 179 8; /* yellow-500 */
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+  }
+  
+  .btn-outline {
+    @apply inline-flex items-center px-6 py-3 border-2 border-current text-base font-medium rounded-full hover:bg-current hover:bg-opacity-10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current transition-all duration-300;
+  }
+
+  .glassmorphism {
+    @apply bg-white/20 backdrop-blur-md border border-white/30;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-orange-500 to-red-600 bg-clip-text text-transparent;
+  }
+
+  .section-divider {
+    clip-path: polygon(0 15%, 100% 0%, 100% 85%, 0% 100%);
+  }
+}
+
+@layer utilities {
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .glow {
+    box-shadow: 0 0 20px rgba(234, 88, 12, 0.3);
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.6;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gradient-to-b from-orange-400 to-red-500 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply from-orange-500 to-red-600;
+}
