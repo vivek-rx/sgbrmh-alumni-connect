@@ -139,8 +139,8 @@ export function AlumniCard({ alumni, index = 0, canViewProfile = false }: Alumni
               <Lock className="w-4 h-4 mr-2" />
               <span>Verify your account to view profiles</span>
             </div>
-          ) : alumni.verified ? (
-            // Current user IS verified AND alumni profile is verified - show button
+          ) : (
+            // Current user IS verified - show button for all alumni profiles
             <Link to={`/profile/${alumni.id}`} className="block">
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -151,12 +151,6 @@ export function AlumniCard({ alumni, index = 0, canViewProfile = false }: Alumni
                 <ArrowRight className="w-4 h-4 ml-2" />
               </motion.button>
             </Link>
-          ) : (
-            // Current user IS verified BUT alumni profile is NOT verified
-            <div className="flex items-center justify-center text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
-              <Lock className="w-4 h-4 mr-2" />
-              <span>Profile not verified yet</span>
-            </div>
           )}
         </div>
       </motion.div>

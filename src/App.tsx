@@ -8,6 +8,7 @@ import AlumniDirectory from './pages/AlumniDirectory'
 import Jobs from './pages/Jobs'
 import Events from './pages/Events'
 import Profile from './pages/Profile'
+import ProfileView from './pages/ProfileView'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import Callback from './pages/auth/Callback'
@@ -47,6 +48,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile/:id" 
+            element={
+              <ProtectedRoute>
+                <ProfileView />
               </ProtectedRoute>
             } 
           />
