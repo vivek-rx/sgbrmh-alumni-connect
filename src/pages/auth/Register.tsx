@@ -1,9 +1,23 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, User, Mail, Phone, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, User, Mail, Phone, Calendar, MapPin, Loader2, Check, X, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import toast, { Toaster } from 'react-hot-toast';
+
+// Password Requirement Component
+function PasswordRequirement({ met, text }: { met: boolean; text: string }) {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      {met ? (
+        <Check className="h-3 w-3 text-green-600 flex-shrink-0" />
+      ) : (
+        <X className="h-3 w-3 text-gray-400 flex-shrink-0" />
+      )}
+      <span className={met ? 'text-green-600' : 'text-gray-500'}>{text}</span>
+    </div>
+  );
+}
 
 export default function Register() {
   console.log('📝 Register: Component rendering...');
@@ -19,7 +33,9 @@ export default function Register() {
     // OPTIONAL FIELDS
     phone: '',
     gender: '',
-    date_of_birth: '',
+    birth_day: '',
+    birth_month: '',
+    birth_year: '',
     current_city: '',
     current_country: '',
     bio: '',
@@ -28,7 +44,51 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({ 
+    score: 0, 
+    feedback: '', 
+    label: 'Very Weak', 
+    color: 'bg-red-500' 
+  });
+  const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
   const navigate = useNavigate();
+
+  // Password validation function
+  const validatePassword = (password: string) => {
+    let score = 0;
+    let feedback = [];
+
+    if (password.length >= 8) score++;
+    else feedback.push('at least 8 characters');
+
+    if (/[a-z]/.test(password)) score++;
+    else feedback.push('a lowercase letter');
+
+    if (/[A-Z]/.test(password)) score++;
+    else feedback.push('an uppercase letter');
+
+    if (/\d/.test(password)) score++;
+    else feedback.push('a number');
+
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+    else feedback.push('a special character');
+
+    const strength = {
+      0: { label: 'Very Weak', color: 'bg-red-500' },
+      1: { label: 'Weak', color: 'bg-orange-500' },
+      2: { label: 'Fair', color: 'bg-yellow-500' },
+      3: { label: 'Good', color: 'bg-blue-500' },
+      4: { label: 'Strong', color: 'bg-green-500' },
+      5: { label: 'Very Strong', color: 'bg-green-600' },
+    };
+
+    return {
+      score,
+      feedback: feedback.length > 0 ? `Add ${feedback.join(', ')}` : 'Password is strong!',
+      label: strength[score as keyof typeof strength].label,
+      color: strength[score as keyof typeof strength].color,
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +99,10 @@ export default function Register() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    // Strong password validation
+    const pwdValidation = validatePassword(formData.password);
+    if (pwdValidation.score < 4) {
+      toast.error(`Password is too weak! ${pwdValidation.feedback}`);
       return;
     }
 
@@ -56,6 +118,12 @@ export default function Register() {
       console.log('📧 Email:', formData.email);
       console.log('👤 Name:', formData.name.trim());
       console.log('📅 Batch Year:', parseInt(formData.batch_year));
+
+      // Construct date_of_birth from separate fields
+      let date_of_birth = null;
+      if (formData.birth_day && formData.birth_month && formData.birth_year) {
+        date_of_birth = `${formData.birth_year}-${formData.birth_month.padStart(2, '0')}-${formData.birth_day.padStart(2, '0')}`;
+      }
       
       // Sign up with Supabase Auth (with email confirmation)
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -84,16 +152,17 @@ export default function Register() {
           batch_year: parseInt(formData.batch_year),
           phone: formData.phone.trim() || null,
           gender: (formData.gender as any) || null,
-          date_of_birth: formData.date_of_birth || null,
+          date_of_birth: date_of_birth,
           current_city: formData.current_city.trim() || null,
           current_country: formData.current_country.trim() || null,
           bio: formData.bio.trim() || null,
           role: 'alumni' as const,
-          verified: false,
+          verified: false, // ⚠️ MUST be false - only admin can verify
           profile_completed: false,
         };
 
         console.log('📝 Profile Data to Insert:', profileData);
+        console.log('🔍 VERIFIED FIELD CHECK:', profileData.verified, '(should be false)');
 
         const { data: insertedData, error: profileError } = await supabase
           .from('alumni')
@@ -129,10 +198,26 @@ export default function Register() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+
+    // Update password strength on password change
+    if (name === 'password') {
+      const strength = validatePassword(value);
+      setPasswordStrength(strength);
+      // Check if passwords match
+      if (formData.confirmPassword) {
+        setPasswordsMatch(value === formData.confirmPassword);
+      }
+    }
+
+    // Check if passwords match on confirm password change
+    if (name === 'confirmPassword') {
+      setPasswordsMatch(formData.password === value);
+    }
   };
 
   const currentYear = new Date().getFullYear();
@@ -256,7 +341,7 @@ export default function Register() {
                 </div>
 
                 {/* Password */}
-                <div>
+                <div className="md:col-span-2">
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                     Password *
                   </label>
@@ -266,8 +351,12 @@ export default function Register() {
                       name="password"
                       type={showPassword ? 'text' : 'password'}
                       required
-                      className="w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Create a password"
+                      className={`w-full px-3 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 ${
+                        formData.password && passwordStrength.score < 4 
+                          ? 'border-red-300 bg-red-50' 
+                          : 'border-gray-300'
+                      }`}
+                      placeholder="Create a strong password"
                       value={formData.password}
                       onChange={handleChange}
                     />
@@ -283,6 +372,58 @@ export default function Register() {
                       )}
                     </button>
                   </div>
+                  
+                  {/* Password Strength Indicator */}
+                  {formData.password && (
+                    <div className="mt-2">
+                      <div className="flex gap-1 mb-1">
+                        {[1, 2, 3, 4, 5].map((level) => (
+                          <div
+                            key={level}
+                            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+                              level <= passwordStrength.score
+                                ? passwordStrength.color
+                                : 'bg-gray-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className={`font-medium ${
+                          passwordStrength.score >= 4 ? 'text-green-600' : 'text-gray-600'
+                        }`}>
+                          {passwordStrength.label}
+                        </span>
+                        {passwordStrength.score < 4 && (
+                          <span className="text-gray-500">{passwordStrength.feedback}</span>
+                        )}
+                      </div>
+                      
+                      {/* Password Requirements */}
+                      <div className="mt-2 space-y-1">
+                        <PasswordRequirement 
+                          met={formData.password.length >= 8} 
+                          text="At least 8 characters" 
+                        />
+                        <PasswordRequirement 
+                          met={/[a-z]/.test(formData.password)} 
+                          text="One lowercase letter" 
+                        />
+                        <PasswordRequirement 
+                          met={/[A-Z]/.test(formData.password)} 
+                          text="One uppercase letter" 
+                        />
+                        <PasswordRequirement 
+                          met={/\d/.test(formData.password)} 
+                          text="One number" 
+                        />
+                        <PasswordRequirement 
+                          met={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)} 
+                          text="One special character (!@#$%...)" 
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Confirm Password */}
@@ -296,7 +437,13 @@ export default function Register() {
                       name="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
                       required
-                      className="w-full px-3 py-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
+                      className={`w-full px-3 py-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 ${
+                        formData.confirmPassword && passwordsMatch === false
+                          ? 'border-red-300 bg-red-50'
+                          : formData.confirmPassword && passwordsMatch === true
+                          ? 'border-green-300 bg-green-50'
+                          : 'border-gray-300'
+                      }`}
                       placeholder="Confirm your password"
                       value={formData.confirmPassword}
                       onChange={handleChange}
@@ -313,6 +460,23 @@ export default function Register() {
                       )}
                     </button>
                   </div>
+                  
+                  {/* Password Match Indicator */}
+                  {formData.confirmPassword && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {passwordsMatch ? (
+                        <>
+                          <Check className="h-4 w-4 text-green-600" />
+                          <span className="text-sm text-green-600 font-medium">Passwords match</span>
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-4 w-4 text-red-600" />
+                          <span className="text-sm text-red-600 font-medium">Passwords do not match</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -365,18 +529,65 @@ export default function Register() {
                 </div>
 
                 {/* Date of Birth */}
-                <div>
-                  <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Date of Birth
                   </label>
-                  <input
-                    id="date_of_birth"
-                    name="date_of_birth"
-                    type="date"
-                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
-                    value={formData.date_of_birth}
-                    onChange={handleChange}
-                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Day */}
+                    <div>
+                      <select
+                        name="birth_day"
+                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
+                        value={formData.birth_day}
+                        onChange={handleChange}
+                      >
+                        <option value="">Day</option>
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                          <option key={day} value={day}>{day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Month */}
+                    <div>
+                      <select
+                        name="birth_month"
+                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
+                        value={formData.birth_month}
+                        onChange={handleChange}
+                      >
+                        <option value="">Month</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+                    
+                    {/* Year */}
+                    <div>
+                      <select
+                        name="birth_year"
+                        className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
+                        value={formData.birth_year}
+                        onChange={handleChange}
+                      >
+                        <option value="">Year</option>
+                        {Array.from({ length: 100 }, (_, i) => currentYear - 15 - i).map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Current City */}

@@ -1,89 +1,82 @@
 import { motion } from 'framer-motion';
 import { AlumniCard } from '@/components/AlumniCard';
-import { Search, Filter, Users, TrendingUp } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Filter, Users, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth';
+import toast from 'react-hot-toast';
 
-// Sample data - replace with real data from your database later
-const sampleAlumni = [
-  {
-    id: '1',
-    name: 'Raj Sharma',
-    batch: '2018',
-    course: 'Computer Engineering',
-    company: 'Google',
-    position: 'Senior Software Engineer',
-    location: 'Bangalore, India',
-    avatar: '/default-avatar.png',
-    bio: 'Passionate about building scalable systems and mentoring junior developers. Love to contribute to open source projects.'
-  },
-  {
-    id: '2',
-    name: 'Priya Patel',
-    batch: '2020',
-    course: 'Information Technology',
-    company: 'Microsoft',
-    position: 'Product Manager',
-    location: 'Seattle, USA',
-    avatar: '/default-avatar.png',
-    bio: 'Focused on creating user-centric products that make a real difference. Always excited to help fellow alumni.'
-  },
-  {
-    id: '3',
-    name: 'Arjun Mehta',
-    batch: '2017',
-    course: 'Mechanical Engineering',
-    company: 'Tesla',
-    position: 'Design Engineer',
-    location: 'California, USA',
-    avatar: '/default-avatar.png',
-    bio: 'Working on sustainable transportation solutions. Happy to share insights about automotive industry.'
-  },
-  {
-    id: '4',
-    name: 'Sneha Reddy',
-    batch: '2019',
-    course: 'Electronics Engineering',
-    company: 'Amazon',
-    position: 'Technical Lead',
-    location: 'Hyderabad, India',
-    avatar: '/default-avatar.png',
-    bio: 'Leading cross-functional teams to deliver innovative solutions. Passionate about mentoring and career growth.'
-  },
-  {
-    id: '5',
-    name: 'Vikram Singh',
-    batch: '2016',
-    course: 'Civil Engineering',
-    company: 'L&T Construction',
-    position: 'Project Manager',
-    location: 'Mumbai, India',
-    avatar: '/default-avatar.png',
-    bio: 'Managing large-scale infrastructure projects. Always ready to share construction industry insights.'
-  },
-  {
-    id: '6',
-    name: 'Ananya Joshi',
-    batch: '2021',
-    course: 'Computer Science',
-    company: 'Startrup Inc',
-    position: 'Full Stack Developer',
-    location: 'Pune, India',
-    avatar: '/default-avatar.png',
-    bio: 'Building the next generation of web applications. Love exploring new technologies and frameworks.'
-  }
-];
+interface AlumniData {
+  id: string;
+  name: string;
+  email: string;
+  batch_year: number;
+  profile_photo_url?: string | null;
+  phone?: string | null;
+  gender?: string | null;
+  current_city?: string | null;
+  current_country?: string | null;
+  bio?: string | null;
+  verified?: boolean;
+  profile_completed?: boolean;
+  created_at?: string;
+}
 
-export default function Alumni() {
+export default function AlumniDirectory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('all');
+  const [alumni, setAlumni] = useState<AlumniData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user, profile } = useAuth(); // Get current logged-in user info
 
-  const filteredAlumni = sampleAlumni.filter(alumni => {
-    const matchesSearch = alumni.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alumni.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alumni.position?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesBatch = selectedBatch === 'all' || alumni.batch === selectedBatch;
+  // Check if current user is verified
+  const isCurrentUserVerified = profile?.verified || false;
+
+  // Fetch alumni from database
+  useEffect(() => {
+    fetchAlumni();
+  }, []);
+
+  const fetchAlumni = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('🔍 Fetching alumni from database...');
+      const { data, error: fetchError } = await supabase
+        .from('alumni')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        console.error('❌ Error fetching alumni:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('✅ Alumni fetched successfully:', data);
+      console.log('📊 Total alumni count:', data?.length || 0);
+      setAlumni(data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch alumni:', err);
+      setError(err.message || 'Failed to load alumni');
+      toast.error('Failed to load alumni directory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredAlumni = alumni.filter(alum => {
+    const matchesSearch = alum.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         alum.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         alum.current_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         alum.current_country?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesBatch = selectedBatch === 'all' || alum.batch_year.toString() === selectedBatch;
     return matchesSearch && matchesBatch;
   });
+
+  // Get unique batch years from alumni data
+  const batchYears = Array.from(new Set(alumni.map(a => a.batch_year))).sort((a, b) => b - a);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -143,15 +136,15 @@ export default function Alumni() {
             transition={{ duration: 0.8, delay: 0.6 }}
           >
             <div className="text-center">
-              <div className="text-3xl font-bold">{sampleAlumni.length}+</div>
+              <div className="text-3xl font-bold">{alumni.length}</div>
               <div className="text-orange-200">Alumni</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold">15+</div>
-              <div className="text-orange-200">Companies</div>
+              <div className="text-3xl font-bold">{alumni.filter(a => a.verified).length}</div>
+              <div className="text-orange-200">Verified</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold">8+</div>
+              <div className="text-3xl font-bold">{new Set(alumni.map(a => a.current_country).filter(Boolean)).size}</div>
               <div className="text-orange-200">Countries</div>
             </div>
           </motion.div>
@@ -172,7 +165,7 @@ export default function Alumni() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by name, company, or position..."
+                placeholder="Search by name, email, or location..."
                 className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -188,12 +181,9 @@ export default function Alumni() {
                 onChange={(e) => setSelectedBatch(e.target.value)}
               >
                 <option value="all">All Batches</option>
-                <option value="2021">2021</option>
-                <option value="2020">2020</option>
-                <option value="2019">2019</option>
-                <option value="2018">2018</option>
-                <option value="2017">2017</option>
-                <option value="2016">2016</option>
+                {batchYears.map(year => (
+                  <option key={year} value={year.toString()}>{year}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -206,7 +196,7 @@ export default function Alumni() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            Showing {filteredAlumni.length} alumni
+            Showing {filteredAlumni.length} of {alumni.length} alumni
           </motion.div>
         </div>
       </motion.section>
@@ -219,13 +209,35 @@ export default function Alumni() {
         animate="visible"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {filteredAlumni.length > 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-12 w-12 text-orange-500 animate-spin mb-4" />
+              <p className="text-gray-600">Loading alumni directory...</p>
+            </div>
+          ) : error ? (
+            <motion.div 
+              className="text-center py-16"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Error loading alumni</h3>
+              <p className="text-gray-500 mb-4">{error}</p>
+              <button
+                onClick={fetchAlumni}
+                className="px-6 py-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors"
+              >
+                Try Again
+              </button>
+            </motion.div>
+          ) : filteredAlumni.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredAlumni.map((alumni, index) => (
+              {filteredAlumni.map((alum, index) => (
                 <AlumniCard 
-                  key={alumni.id} 
-                  alumni={alumni} 
+                  key={alum.id} 
+                  alumni={alum} 
                   index={index}
+                  canViewProfile={isCurrentUserVerified}
                 />
               ))}
             </div>
@@ -237,7 +249,11 @@ export default function Alumni() {
             >
               <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">No alumni found</h3>
-              <p className="text-gray-500">Try adjusting your search criteria</p>
+              <p className="text-gray-500">
+                {alumni.length === 0 
+                  ? 'No alumni registered yet. Be the first to join!' 
+                  : 'Try adjusting your search criteria'}
+              </p>
             </motion.div>
           )}
         </div>
@@ -258,13 +274,14 @@ export default function Alumni() {
           <p className="text-xl text-orange-100 mb-8">
             Connect, share experiences, and help the next generation grow
           </p>
-          <motion.button
-            className="px-8 py-4 bg-white text-orange-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
+          <motion.a
+            href="/auth/register"
+            className="inline-block px-8 py-4 bg-white text-orange-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
             Register as Alumni
-          </motion.button>
+          </motion.a>
         </div>
       </motion.section>
     </div>

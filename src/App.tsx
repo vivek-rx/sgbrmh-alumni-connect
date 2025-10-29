@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { Navbar } from './components/Navbar'
 import { Footer } from './components/Footer'
 import Home from './pages/Home'
-import Alumni from './pages/Alumni'
+import AlumniDirectory from './pages/AlumniDirectory'
 import Jobs from './pages/Jobs'
 import Events from './pages/Events'
 import Profile from './pages/Profile'
@@ -18,13 +18,25 @@ function App() {
   const location = useLocation();
   console.log('🚀 App: Rendering with route:', location.pathname);
   
+  // Environment variables check on app startup
+  console.log('🔧 App Startup Env Check:', {
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+    hasSupabaseKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+    supabaseKeyLength: import.meta.env.VITE_SUPABASE_ANON_KEY?.length || 0,
+    supabaseKeyPreview: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 30) + '...',
+    mode: import.meta.env.MODE,
+    dev: import.meta.env.DEV,
+    prod: import.meta.env.PROD,
+    allEnvKeys: Object.keys(import.meta.env).filter(key => key.startsWith('VITE_'))
+  });
+  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/alumni" element={<Alumni />} />
+          <Route path="/alumni" element={<AlumniDirectory />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/events" element={<Events />} />
           <Route path="/auth/login" element={<Login />} />

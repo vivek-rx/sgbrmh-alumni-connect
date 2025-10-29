@@ -48,6 +48,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Fetch profile for a given userId
+  const fetchProfile = async (userId: string) => {
+    console.log('🔍 Auth: Fetching profile for user ID:', userId);
+    try {
+      const { data, error } = await supabase
+        .from('alumni')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (error) {
+        console.error('❌ Auth: Error fetching profile:', error);
+        setProfile(null);
+      } else {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error('❌ Auth: Profile fetch failed with exception:', error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  };
   console.log('🔐 AuthProvider: Initializing...');
   
   const [user, setUser] = useState<User | null>(null);
@@ -59,96 +81,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     console.log('🔍 Auth: Initializing auth state...');
     
-    // Set a maximum timeout to prevent infinite loading
-    const maxLoadingTimeout = setTimeout(() => {
-      console.log('⏰ Auth: Maximum loading timeout reached, forcing loading to false');
-      setLoading(false);
-    }, 15000); // 15 second timeout
-    
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔍 Auth: Initial session check:', session ? 'Session found' : 'No session');
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        console.log('🔍 Auth: User found, fetching profile...');
-        fetchProfile(session.user.id);
+    // Restore session on mount
+    const restoreSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (data?.session?.user) {
+        setUser(data.session.user);
+        fetchProfile(data.session.user.id);
       } else {
-        console.log('🔍 Auth: No user, setting loading to false');
+        setUser(null);
+        setProfile(null);
         setLoading(false);
       }
-      clearTimeout(maxLoadingTimeout);
-    }).catch((error) => {
-      console.error('❌ Auth: Error getting initial session:', error);
-      setLoading(false);
-      clearTimeout(maxLoadingTimeout);
-    });
+    };
+    restoreSession();
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔍 Auth: Auth state changed:', event, session ? 'Session exists' : 'No session');
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        console.log('🔍 Auth: User authenticated, fetching profile...');
-        try {
-          await fetchProfile(session.user.id);
-        } catch (error) {
-          console.error('❌ Auth: Error fetching profile on auth change:', error);
-          setLoading(false);
-        }
+        fetchProfile(session.user.id);
       } else {
-        console.log('🔍 Auth: User signed out, clearing profile');
         setProfile(null);
         setLoading(false);
       }
     });
-
+    
     return () => {
-      clearTimeout(maxLoadingTimeout);
-      subscription.unsubscribe();
+      listener?.subscription?.unsubscribe();
     };
   }, []);
-
-  const fetchProfile = async (userId: string) => {
-    console.log('🔍 Auth: Fetching profile for user ID:', userId);
-    console.log('🔍 Auth: User ID type:', typeof userId, 'length:', userId.length);
-    
-    try {
-      // First, let's try to query the table to see if it's accessible
-      console.log('🔍 Auth: Attempting to query alumni table...');
-      
-      const { data, error, count } = await supabase
-        .from('alumni')
-        .select('*', { count: 'exact' })
-        .eq('id', userId)
-        .single();
-
-      console.log('🔍 Auth: Query response:', { data, error, count });
-      console.log('🔍 Auth: Error details:', error?.message, error?.code, error?.details);
-
-      if (error) {
-        console.error('❌ Auth: Error fetching profile:', error);
-        // If no profile exists, create a basic one or handle gracefully
-        if (error.code === 'PGRST116') {
-          console.log('⚠️ Auth: No profile found, user might need to complete registration');
-          setProfile(null);
-        } else {
-          console.error('❌ Auth: Database error:', error);
-          setProfile(null);
-        }
-      } else {
-        console.log('✅ Auth: Profile fetched successfully:', data);
-        setProfile(data);
-      }
-    } catch (error) {
-      console.error('❌ Auth: Profile fetch failed with exception:', error);
-      setProfile(null);
-    } finally {
-      console.log('🏁 Auth: Setting loading to false after profile fetch attempt');
-      setLoading(false);
-    }
-  };
 
   const signUp = async (email: string, password: string, profileData: Partial<Alumni>) => {
     try {
@@ -241,15 +202,92 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (updates: Partial<Alumni>) => {
     if (!user) throw new Error('No user logged in');
 
-    const { data, error } = await supabase
-      .from('alumni')
-      .update(updates)
-      .eq('id', user.id)
-      .select()
-      .single();
+    console.log('🔍 Auth updateProfile: Starting update process...');
+    console.log('🔍 Auth updateProfile: User ID:', user.id);
+    console.log('🔍 Auth updateProfile: User email:', user.email);
+    console.log('🔍 Auth updateProfile: Updates to apply:', updates);
 
-    if (error) throw error;
-    setProfile(data);
+    try {
+      // Let's try a simple existence check first with timeout
+      console.log('🔍 Auth updateProfile: Testing basic table access...');
+      
+      const testPromise = supabase
+        .from('alumni')
+        .select('count(*)')
+        .limit(1);
+      
+      const testTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Basic table access timeout')), 5000);
+      });
+
+      try {
+        const testResult = await Promise.race([testPromise, testTimeout]);
+        console.log('✅ Auth updateProfile: Basic table access works:', testResult);
+      } catch (testError: any) {
+        console.error('❌ Auth updateProfile: Basic table access failed:', testError);
+        throw new Error(`Database access issue: ${testError.message}`);
+      }
+
+      // Now try to find our specific record
+      console.log('🔍 Auth updateProfile: Searching for user record...');
+      
+      const searchPromise = supabase
+        .from('alumni')
+        .select('id, email, name, profile_completed')
+        .eq('id', user.id);
+      
+      const searchTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('User search timeout')), 5000);
+      });
+
+      const searchResult = await Promise.race([searchPromise, searchTimeout]) as any;
+      const { data: searchData, error: searchError } = searchResult;
+
+      if (searchError) {
+        console.error('❌ Auth updateProfile: Search failed:', searchError);
+        throw new Error(`Cannot search for user profile: ${searchError.message}`);
+      }
+
+      console.log('🔍 Auth updateProfile: Search results:', searchData);
+
+      if (!searchData || searchData.length === 0) {
+        console.error('❌ Auth updateProfile: No profile found for user ID:', user.id);
+        throw new Error('Profile record not found. You may need to register again.');
+      }
+
+      const existingProfile = searchData[0];
+      console.log('✅ Auth updateProfile: Found existing profile:', existingProfile);
+
+      // Now attempt the update
+      console.log('🔍 Auth updateProfile: Attempting update...');
+      
+      const updatePromise = supabase
+        .from('alumni')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      const updateTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Update timeout')), 10000);
+      });
+
+      const updateResult = await Promise.race([updatePromise, updateTimeout]) as any;
+      const { data, error } = updateResult;
+
+      if (error) {
+        console.error('❌ Auth updateProfile: Update failed:', error);
+        throw error;
+      }
+      
+      console.log('✅ Auth updateProfile: Profile updated successfully:', data);
+      setProfile(data);
+      return data;
+
+    } catch (error: any) {
+      console.error('❌ Auth updateProfile: Operation failed:', error);
+      throw error;
+    }
   };
 
   const value: AuthContextType = {
