@@ -13,6 +13,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import Callback from './pages/auth/Callback'
 import Admin from './pages/Admin'
+import AdminDashboard from './pages/AdminDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -66,6 +67,10 @@ function App() {
                 <Admin />
               </ProtectedRoute>
             } 
+          />
+          <Route 
+            path="/admin/dashboard" 
+            element={<AdminDashboard />} 
           />
         </Routes>
       </main>

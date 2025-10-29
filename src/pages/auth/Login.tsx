@@ -129,7 +129,7 @@ export default function Login() {
       try {
         if (profile.role === 'admin') {
           console.log('➡️ Redirecting to admin dashboard');
-          navigate('/admin', { replace: true });
+          navigate('/admin/dashboard', { replace: true });
         } else if (!profile.profile_completed) {
           console.log('➡️ Redirecting to profile completion');
           navigate('/profile/complete', { replace: true });
@@ -144,7 +144,7 @@ export default function Login() {
         setTimeout(() => {
           console.log('⚠️ Fallback: Using window.location redirect');
           if (profile.role === 'admin') {
-            window.location.href = '/admin';
+            window.location.href = '/admin/dashboard';
           } else if (!profile.profile_completed) {
             window.location.href = '/profile/complete';  
           } else {
@@ -156,7 +156,7 @@ export default function Login() {
         console.error('❌ Navigation error:', navError);
         // Force redirect if React Router fails
         if (profile.role === 'admin') {
-          window.location.href = '/admin';
+          window.location.href = '/admin/dashboard';
         } else if (!profile.profile_completed) {
           window.location.href = '/profile/complete';
         } else {

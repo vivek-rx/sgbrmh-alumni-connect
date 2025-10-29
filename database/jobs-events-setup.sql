@@ -78,16 +78,26 @@ CREATE INDEX IF NOT EXISTS idx_job_applications_alumni_id ON public.job_applicat
 -- RLS Policies for Jobs Table
 ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
 
--- Allow verified users to read all active jobs
+-- Allow verified users to read active jobs, admins can read ALL jobs
 CREATE POLICY "Verified users can view active jobs"
 ON public.jobs FOR SELECT
 TO authenticated
 USING (
-    is_active = true 
-    AND EXISTS (
+    -- Admin can see ALL jobs (active and inactive)
+    EXISTS (
         SELECT 1 FROM public.alumni
         WHERE alumni.id = auth.uid()
-        AND alumni.verified = true
+        AND alumni.role = 'admin'
+    )
+    OR
+    -- Regular verified users can only see active jobs
+    (
+        is_active = true 
+        AND EXISTS (
+            SELECT 1 FROM public.alumni
+            WHERE alumni.id = auth.uid()
+            AND alumni.verified = true
+        )
     )
 );
 
@@ -104,32 +114,63 @@ WITH CHECK (
     )
 );
 
--- Allow users to update their own jobs
+-- Allow users to update their own jobs, admins can update any job
 CREATE POLICY "Users can update their own jobs"
 ON public.jobs FOR UPDATE
 TO authenticated
-USING (posted_by = auth.uid())
-WITH CHECK (posted_by = auth.uid());
+USING (
+    posted_by = auth.uid()
+    OR EXISTS (
+        SELECT 1 FROM public.alumni
+        WHERE alumni.id = auth.uid()
+        AND alumni.role = 'admin'
+    )
+)
+WITH CHECK (
+    posted_by = auth.uid()
+    OR EXISTS (
+        SELECT 1 FROM public.alumni
+        WHERE alumni.id = auth.uid()
+        AND alumni.role = 'admin'
+    )
+);
 
--- Allow users to delete their own jobs
+-- Allow users to delete their own jobs, admins can delete any job
 CREATE POLICY "Users can delete their own jobs"
 ON public.jobs FOR DELETE
 TO authenticated
-USING (posted_by = auth.uid());
+USING (
+    posted_by = auth.uid()
+    OR EXISTS (
+        SELECT 1 FROM public.alumni
+        WHERE alumni.id = auth.uid()
+        AND alumni.role = 'admin'
+    )
+);
 
 -- RLS Policies for Events Table
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
--- Allow verified users to read all active events
+-- Allow verified users to read active events, admins can read ALL events
 CREATE POLICY "Verified users can view active events"
 ON public.events FOR SELECT
 TO authenticated
 USING (
-    is_active = true 
-    AND EXISTS (
+    -- Admin can see ALL events (active and inactive)
+    EXISTS (
         SELECT 1 FROM public.alumni
         WHERE alumni.id = auth.uid()
-        AND alumni.verified = true
+        AND alumni.role = 'admin'
+    )
+    OR
+    -- Regular verified users can only see active events
+    (
+        is_active = true 
+        AND EXISTS (
+            SELECT 1 FROM public.alumni
+            WHERE alumni.id = auth.uid()
+            AND alumni.verified = true
+        )
     )
 );
 
@@ -146,18 +187,39 @@ WITH CHECK (
     )
 );
 
--- Allow users to update their own events
+-- Allow users to update their own events, admins can update any event
 CREATE POLICY "Users can update their own events"
 ON public.events FOR UPDATE
 TO authenticated
-USING (organized_by = auth.uid())
-WITH CHECK (organized_by = auth.uid());
+USING (
+    organized_by = auth.uid()
+    OR EXISTS (
+        SELECT 1 FROM public.alumni
+        WHERE alumni.id = auth.uid()
+        AND alumni.role = 'admin'
+    )
+)
+WITH CHECK (
+    organized_by = auth.uid()
+    OR EXISTS (
+        SELECT 1 FROM public.alumni
+        WHERE alumni.id = auth.uid()
+        AND alumni.role = 'admin'
+    )
+);
 
--- Allow users to delete their own events
+-- Allow users to delete their own events, admins can delete any event
 CREATE POLICY "Users can delete their own events"
 ON public.events FOR DELETE
 TO authenticated
-USING (organized_by = auth.uid());
+USING (
+    organized_by = auth.uid()
+    OR EXISTS (
+        SELECT 1 FROM public.alumni
+        WHERE alumni.id = auth.uid()
+        AND alumni.role = 'admin'
+    )
+);
 
 -- RLS Policies for Event Registrations
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;

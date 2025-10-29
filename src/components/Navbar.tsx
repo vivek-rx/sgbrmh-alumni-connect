@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, Shield } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 
 export function Navbar() {
@@ -76,6 +76,16 @@ export function Navbar() {
             ))}
             {user ? (
               <div className="flex items-center space-x-4">
+                {/* Admin Dashboard Button - Only visible to admins */}
+                {profile?.role === 'admin' && (
+                  <Link
+                    to="/admin/dashboard"
+                    className="flex items-center px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    <Shield className="h-5 w-5 mr-2" />
+                    <span className="font-semibold">Admin Dashboard</span>
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   onClick={handleProfileClick}
@@ -134,6 +144,17 @@ export function Navbar() {
             ))}
             {user ? (
               <div className="border-t border-gray-200 pt-4 pb-3">
+                {/* Admin Dashboard Button - Mobile - Only visible to admins */}
+                {profile?.role === 'admin' && (
+                  <Link
+                    to="/admin/dashboard"
+                    className="flex items-center px-3 py-2 mb-2 mx-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 shadow-md"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Shield className="h-5 w-5 mr-2" />
+                    <span className="font-semibold">Admin Dashboard</span>
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   className="flex items-center px-3 py-2 text-gray-700 hover:text-primary"
