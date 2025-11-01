@@ -209,8 +209,8 @@ export default function AdminDashboard() {
         console.log(`✅ Loaded ${jobsData?.length || 0} jobs`);
         console.log('Jobs breakdown:', {
           total: jobsData?.length || 0,
-          active: jobsData?.filter(j => j.is_active).length || 0,
-          inactive: jobsData?.filter(j => !j.is_active).length || 0
+          active: jobsData?.filter((j: any) => j.is_active).length || 0,
+          inactive: jobsData?.filter((j: any) => !j.is_active).length || 0
         });
       }
       setJobs(jobsData || []);
@@ -228,8 +228,8 @@ export default function AdminDashboard() {
         console.log(`✅ Loaded ${eventsData?.length || 0} events`);
         console.log('Events breakdown:', {
           total: eventsData?.length || 0,
-          active: eventsData?.filter(e => e.is_active).length || 0,
-          inactive: eventsData?.filter(e => !e.is_active).length || 0
+          active: eventsData?.filter((e: any) => e.is_active).length || 0,
+          inactive: eventsData?.filter((e: any) => !e.is_active).length || 0
         });
       }
       setEvents(eventsData || []);

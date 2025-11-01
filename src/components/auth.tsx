@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import type { User } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import type { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 // Define the Alumni type directly here to avoid import issues
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('🔍 Auth: Initializing auth state...');
     
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: Session | null } }) => {
       console.log('🔍 Auth: Initial session check:', session ? 'Session found' : 'No session');
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: string, session: Session | null) => {
       console.log('🔍 Auth: Auth state changed:', event, session ? 'Session exists' : 'No session');
       setUser(session?.user ?? null);
       if (session?.user) {
