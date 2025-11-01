@@ -258,12 +258,15 @@ export default function Profile() {
         // Pre-flight check: Test basic Supabase connectivity
         console.log('🧪 Pre-flight: Testing basic Supabase connectivity...');
         setDebugInfo(prev => [...prev, '🧪 Testing basic Supabase connectivity...']);
+        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+        const healthHeaders: HeadersInit = {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+        };
+
         const healthCheck = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
           method: 'HEAD',
-          headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          }
+          headers: healthHeaders,
         });
         
         console.log('🧪 Pre-flight result:', {
