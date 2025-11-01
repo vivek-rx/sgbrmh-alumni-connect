@@ -282,6 +282,31 @@ export default function Login() {
     }
   };
 
+  const handleSignInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      // Trigger Supabase OAuth flow for Google
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        console.error('Google sign-in error:', error);
+        toast.error('Failed to start Google sign-in: ' + error.message);
+      }
+
+      // Note: on success Supabase will redirect the browser to Google's consent screen
+    } catch (error: any) {
+      console.error('Unexpected Google sign-in error:', error);
+      toast.error('Failed to sign in with Google. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -414,6 +439,28 @@ export default function Login() {
                 )}
               </motion.button>
             </div>
+
+              {/* Social / OAuth */}
+              <div className="my-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <div className="text-sm text-gray-500">or</div>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSignInWithGoogle}
+                  disabled={loading}
+                  className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  {/* Simple Google glyph */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21.35 11.1h-9.18v2.92h5.28c-.23 1.26-1.33 3.7-5.28 3.7-3.17 0-5.76-2.62-5.76-5.84s2.59-5.84 5.76-5.84c1.81 0 3.02.77 3.71 1.44l2.53-2.44C17.05 3.18 14.73 2 11.99 2 6.9 2 2.98 5.93 2.98 11s3.92 9 9.01 9c5.19 0 8.6-3.64 8.6-8.77 0-.6-.06-1.06-.24-1.13z" fill="#4285F4"/>
+                  </svg>
+                  <span className="font-medium">Continue with Google</span>
+                </button>
+              </div>
 
             {/* Email Verification Help */}
             <div className="border-t border-gray-200 pt-6">

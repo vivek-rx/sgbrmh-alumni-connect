@@ -21,12 +21,53 @@ export default function AuthCallback() {
         // Handle both URL search params and hash params
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        
+
         // Try to get tokens from either source
         const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
         const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
         const type = urlParams.get('type') || hashParams.get('type');
         const tokenHash = urlParams.get('token_hash') || hashParams.get('token_hash');
+
+        // FIRST: try to detect an active session (this covers OAuth redirects where
+        // Supabase has already set the session). If a user object exists, proceed
+        // to update verification/redirect logic immediately. This avoids falling
+        // through to the token parsing branches which can be brittle across flows.
+        try {
+          const { data: sessionData } = await supabase.auth.getUser();
+          const sessionUser = sessionData?.user;
+          if (sessionUser) {
+            console.log('🔁 Detected active supabase user session in callback:', { id: sessionUser.id, email: sessionUser.email, email_confirmed_at: sessionUser.email_confirmed_at });
+            // If email is confirmed or provider-based login, continue with profile update
+            await updateUserVerificationStatus(sessionUser.id);
+            return;
+          }
+        } catch (sessionErr) {
+          console.warn('⚠️ Could not get current session in callback (will try token handling):', sessionErr);
+        }
+
+        // If no session is available via getUser, but the URL contains an access
+        // token (common in OAuth redirects), try to set the session using the
+        // returned tokens. This catches flows where refresh token may be absent.
+        if (accessToken) {
+          try {
+            console.log('🔁 Attempting to set session from URL access token');
+            // Use `any` to call setSession when refresh token may be absent
+            const { data: sessionData, error: setErr } = await (supabase.auth as any).setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (setErr) {
+              console.warn('⚠️ setSession returned error:', setErr);
+            } else if (sessionData?.user) {
+              console.log('✅ Session set from URL tokens, user:', sessionData.user.id);
+              await updateUserVerificationStatus(sessionData.user.id);
+              return;
+            }
+          } catch (sErr) {
+            console.warn('⚠️ Error while calling setSession from URL tokens:', sErr);
+          }
+        }
         
         console.log('🔑 Extracted tokens:', { 
           accessToken: accessToken ? accessToken.substring(0, 20) + '...' : null, 
@@ -127,16 +168,43 @@ export default function AuthCallback() {
         
         console.log('👤 Existing user data:', { existingUser, selectError });
         
-        if (selectError && selectError.code === 'PGRST116') {
-          console.error('❌ User not found in alumni table:', selectError);
-          throw new Error('User profile not found. Please register again.');
-        }
-        
-        if (selectError) {
+        if (selectError && selectError.code !== 'PGRST116') {
           console.error('❌ Error checking user:', selectError);
           throw selectError;
         }
-        
+
+        // If the user doesn't exist in alumni (no data returned), create a minimal profile
+        if (!existingUser) {
+          console.warn('⚠️ User not found in alumni table, creating minimal profile');
+
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const email = user?.email ?? null;
+            const name = (user as any)?.user_metadata?.full_name || (user as any)?.user_metadata?.name || '';
+
+            const { data: inserted, error: insertError } = await supabase
+              .from('alumni')
+              .insert([{ id: userId, email, name, verified: true, role: 'user', profile_completed: false, created_at: new Date().toISOString() }])
+              .select();
+
+            if (insertError) {
+              console.error('❌ Failed to create minimal alumni profile:', insertError);
+              throw insertError;
+            }
+
+            console.log('✅ Minimal alumni profile created:', inserted);
+            setStatus('success');
+            setMessage('Email verified! Redirecting to profile completion...');
+            toast.success('Email verified! Please complete your profile.');
+
+            setTimeout(() => navigate('/profile/complete'), 1200);
+            return;
+          } catch (createErr) {
+            console.error('❌ Error creating alumni profile:', createErr);
+            throw createErr;
+          }
+        }
+
         // Update user verification status in alumni table
         const { data: updateData, error: updateError } = await supabase
           .from('alumni')
@@ -152,19 +220,36 @@ export default function AuthCallback() {
         if (updateError) {
           console.error('❌ Database update error:', updateError);
           console.log('⚠️ Verification succeeded but database update failed');
-          
+
           // Still show success since email verification worked
           setStatus('success');
-          setMessage('Email verified! (Database update pending)');
-          toast.success('Email verified! You can now log in.');
+          setMessage('Email verified! You can now continue.');
+          toast.success('Email verified! You can now continue.');
         } else {
           console.log('✅ User verification status updated in database');
           setStatus('success');
-          setMessage('Email verified successfully! You can now log in.');
-          toast.success('Email verified! You can now log in.');
+          setMessage('Email verified successfully! Redirecting...');
+          toast.success('Email verified! Redirecting...');
         }
-        
-        // Redirect after success
+
+        // Decide redirect based on profile completion
+        try {
+          const { data: alumniProfile } = await supabase
+            .from('alumni')
+            .select('id, profile_completed')
+            .eq('id', userId)
+            .single();
+
+          if (alumniProfile) {
+            const redirectTo = alumniProfile.profile_completed ? '/profile' : '/profile/complete';
+            setTimeout(() => navigate(redirectTo), 1200);
+            return;
+          }
+        } catch (err) {
+          console.warn('Could not fetch alumni profile to decide redirect:', err);
+        }
+
+        // Fallback: redirect to login if no profile routing decision could be made
         setTimeout(() => {
           navigate('/auth/login');
         }, 2000);
@@ -251,7 +336,7 @@ export default function AuthCallback() {
           
           {status === 'success' && (
             <p className="text-sm text-green-600">
-              Redirecting you to login page...
+              {message || 'Redirecting...'}
             </p>
           )}
           
