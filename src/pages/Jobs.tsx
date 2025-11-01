@@ -94,7 +94,7 @@ export default function Jobs() {
       if (error) throw error;
 
       const jobsWithAppliedStatus = await Promise.all(
-        (data || []).map(async (job) => {
+        (data || []).map(async (job: any) => {
           const { data: applicationData } = await supabase
             .from("job_applications")
             .select("id")

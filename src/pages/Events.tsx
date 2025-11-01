@@ -98,7 +98,7 @@ export default function Events() {
         .order("event_date", { ascending: true });
       if (error) throw error;
       const eventsWithRegistrationStatus = await Promise.all(
-        (data || []).map(async (event) => {
+        (data || []).map(async (event: any) => {
           const { data: registrationData } = await supabase
             .from("event_registrations")
             .select("id")
