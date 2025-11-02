@@ -70,7 +70,11 @@ function App() {
           />
           <Route 
             path="/admin/dashboard" 
-            element={<AdminDashboard />} 
+            element={
+              <ProtectedRoute adminOnly>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </main>

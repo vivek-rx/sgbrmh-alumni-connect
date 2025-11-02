@@ -485,14 +485,6 @@ export default function Login() {
                 </div>
               </div>
             </div>
-
-            {/* Debug Info */}
-            <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-600">
-              <h4 className="font-semibold mb-2">Debug Info:</h4>
-              <p>• Check browser console for detailed logs</p>
-              <p>• Email confirmation required for new accounts</p>
-              <p>• Make sure your Supabase Auth is configured</p>
-            </div>
           </form>
         </motion.div>
       </motion.div>
