@@ -182,16 +182,10 @@ export function Statistics() {
         >
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-200">25+</div>
-            <div className="text-orange-300 text-sm">Companies</div>
+            <div className="text-orange-300 text-sm">Events</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-200">80%</div>
-            <div className="text-orange-300 text-sm">Placement Rate</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-200">150+</div>
-            <div className="text-orange-300 text-sm">Success Stories</div>
-          </div>
+          
+          
           <div className="text-center">
             <div className="text-2xl font-bold text-orange-200">24/7</div>
             <div className="text-orange-300 text-sm">Support</div>
