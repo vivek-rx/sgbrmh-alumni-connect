@@ -100,7 +100,7 @@ export function About() {
               viewport={{ once: true }}
             >
               <div className="text-center">
-                <div className="text-3xl font-bold text-orange-600">50+</div>
+                <div className="text-3xl font-bold text-orange-600">15+</div>
                 <div className="text-gray-600">Years of Legacy</div>
               </div>
               <div className="text-center">

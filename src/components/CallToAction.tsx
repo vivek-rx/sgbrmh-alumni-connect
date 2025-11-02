@@ -73,7 +73,7 @@ export function CallToAction() {
             >
               Be Part of a{' '}
               <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                50+ Year Legacy
+                15+ Year Legacy
               </span>
             </motion.h2>
 

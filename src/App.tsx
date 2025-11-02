@@ -12,6 +12,8 @@ import ProfileView from './pages/ProfileView'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import Callback from './pages/auth/Callback'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 import Admin from './pages/Admin'
 import AdminDashboard from './pages/AdminDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -44,6 +46,8 @@ function App() {
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
           <Route path="/auth/callback" element={<Callback />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route path="/auth/reset-password" element={<ResetPassword />} />
           <Route 
             path="/profile" 
             element={
