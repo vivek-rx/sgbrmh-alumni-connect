@@ -159,17 +159,12 @@ export function Statistics() {
             delay={0.2}
           />
           <AnimatedCounter 
-            endValue={50} 
+            endValue={15} 
             suffix="+" 
             label="Years Legacy" 
             delay={0.4}
           />
-          <AnimatedCounter 
-            endValue={100} 
-            suffix="+" 
-            label="Active Mentors" 
-            delay={0.6}
-          />
+          
         </div>
 
         {/* Additional Stats Row */}
