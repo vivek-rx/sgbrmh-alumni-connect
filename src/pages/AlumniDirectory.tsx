@@ -19,6 +19,7 @@ interface AlumniData {
   bio?: string | null;
   verified?: boolean;
   profile_completed?: boolean;
+  role?: string;
   created_at?: string;
 }
 
@@ -47,6 +48,7 @@ export default function AlumniDirectory() {
       const { data, error: fetchError } = await supabase
         .from('alumni')
         .select('*')
+        .neq('role', 'admin') // Exclude admin users from directory
         .order('created_at', { ascending: false });
 
       if (fetchError) {
