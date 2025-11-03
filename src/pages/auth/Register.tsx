@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, User, Mail, Phone, Calendar, MapPin, Loader2, Check, X, AlertCircle } from 'lucide-react';
@@ -52,6 +52,32 @@ export default function Register() {
   });
   const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
   const navigate = useNavigate();
+
+  // Pre-fill form data from invitation link
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get('invite');
+    const inviteEmail = params.get('email');
+    const inviteName = params.get('name');
+
+    if (inviteToken) {
+      console.log('📧 Invitation detected:', { inviteToken, inviteEmail, inviteName });
+      
+      // Pre-fill email and name if provided
+      if (inviteEmail) {
+        setFormData(prev => ({ ...prev, email: inviteEmail }));
+      }
+      if (inviteName) {
+        setFormData(prev => ({ ...prev, name: inviteName }));
+      }
+      
+      // Show welcome message
+      toast.success('Welcome! Complete your registration to join SGBRMH Alumni Connect.', {
+        duration: 4000,
+        icon: '👋',
+      });
+    }
+  }, []);
 
   // Password validation function
   const validatePassword = (password: string) => {
