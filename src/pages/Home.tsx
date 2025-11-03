@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 export default function Home() {
   const features = [
     {
-      title: 'Alumni Directory',
+      title: 'Year Book',
       description: 'Connect with alumni from different batches and explore their professional journeys.',
       icon: Users,
       link: '/alumni'

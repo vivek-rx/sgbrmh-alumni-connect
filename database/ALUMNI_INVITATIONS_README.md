@@ -14,7 +14,7 @@ database/alumni-invitations-setup.sql
 ## Features Implemented
 
 ### 1. Invite Batchmate
-- **Location**: Alumni Directory page
+- **Location**: Year Book page
 - **Who can use**: Only logged-in and verified users
 - **Button**: "Invite Batchmate" button appears in the header (visible only to verified users)
 
@@ -64,7 +64,7 @@ database/alumni-invitations-setup.sql
 
 ### Test Invite Batchmate:
 1. Login as a verified user
-2. Go to Alumni Directory
+2. Go to Year Book
 3. Click "Invite Batchmate" button
 4. Fill in name and email
 5. Submit invitation

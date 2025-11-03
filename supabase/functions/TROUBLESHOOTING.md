@@ -97,7 +97,7 @@ console.log('Result:', data, error);
 
 ### Test 2: Send real invitation
 1. Log in as verified user
-2. Go to Alumni Directory
+2. Go to Year Book
 3. Click "Invite Batchmate"
 4. Use YOUR email address
 5. Check inbox (and spam)

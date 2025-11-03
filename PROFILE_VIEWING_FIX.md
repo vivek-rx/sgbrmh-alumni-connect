@@ -45,7 +45,7 @@ After running the script, check the console in your browser:
 - Instead of: `❌ ProfileView: User is not verified`
 
 ### Step 3: Test Profile Viewing
-1. Navigate to Alumni Directory
+1. Navigate to Year Book
 2. Click on any alumni card
 3. You should now see their full profile!
 
@@ -67,13 +67,13 @@ This will help you see:
 ### For Verified Users:
 - ✅ Can view their own profile
 - ✅ Can view ALL other alumni profiles
-- ✅ Can access Alumni Directory
+- ✅ Can access Year Book
 - ✅ Can access Jobs & Events
 
 ### For Unverified Users:
 - ✅ Can view their own profile
 - ❌ Cannot view other profiles
-- ❌ Cannot access Alumni Directory
+- ❌ Cannot access Year Book
 - ❌ Cannot access Jobs & Events
 
 ### For Admins:

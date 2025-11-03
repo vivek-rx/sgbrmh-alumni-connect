@@ -64,7 +64,7 @@ export default function AlumniDirectory() {
       setAlumni(data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load alumni');
-      toast.error('Failed to load alumni directory');
+      toast.error('Failed to load Year Book');
     } finally {
       setLoading(false);
     }
@@ -216,7 +216,7 @@ export default function AlumniDirectory() {
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-orange-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading alumni directory...</p>
+          <p className="text-gray-600">Loading Year Book...</p>
         </div>
       </div>
     );
@@ -265,7 +265,7 @@ export default function AlumniDirectory() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            Alumni Directory
+            Year Book
           </motion.h1>
           <motion.p 
             className="text-xl text-orange-100 mb-8"
