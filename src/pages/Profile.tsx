@@ -159,6 +159,11 @@ export default function Profile() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    // Don't allow manual age input since it's auto-calculated
+    if (e.target.name === 'age') {
+      return;
+    }
+    
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
