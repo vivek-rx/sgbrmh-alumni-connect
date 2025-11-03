@@ -5,32 +5,8 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  console.log('🔍 Profile Component: Starting render at', new Date().toISOString());
-  
-  // Manual environment variable check
-  console.log('🔧 Manual Env Check:', {
-    url: import.meta.env.VITE_SUPABASE_URL,
-    hasKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-    keyPreview: import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 20) + '...',
-    keyLength: import.meta.env.VITE_SUPABASE_ANON_KEY?.length || 0,
-    mode: import.meta.env.MODE,
-    dev: import.meta.env.DEV
-  });
-  
   const { user, profile, updateProfile, loading } = useAuth();
-  console.log('🔍 Profile Component: Auth values:', {
-    user: user ? { id: user.id, email: user.email } : null,
-    profile: profile ? { id: profile.id, name: profile.name, email: profile.email, profile_completed: profile.profile_completed } : null,
-    loading,
-    hasUser: !!user,
-    hasProfile: !!profile,
-    authLoading: loading
-  });
-  
   const [isEditing, setIsEditing] = useState(false);
-  console.log('🔍 Profile Component: Edit state:', isEditing);
-  
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -55,25 +31,7 @@ export default function Profile() {
 
   // Load profile data into form
   useEffect(() => {
-    console.log('🔍 Profile useEffect: Running with profile:', profile ? 'Profile exists' : 'No profile');
-    console.log('🔍 Profile useEffect: Profile details:', {
-      hasProfile: !!profile,
-      profileId: profile?.id,
-      profileEmail: profile?.email,
-      profileName: profile?.name,
-      profileCompleted: profile?.profile_completed
-    });
-    
     if (profile) {
-      console.log('🔍 Profile useEffect: Setting form data with profile data');
-      console.log('🔍 Profile useEffect: Profile data being loaded:', {
-        name: profile.name,
-        email: profile.email,
-        phone: profile.phone,
-        batch_year: profile.batch_year,
-        gender: profile.gender,
-        bio: profile.bio
-      });
       setFormData({
         name: profile.name || '',
         phone: profile.phone || '',
@@ -94,10 +52,8 @@ export default function Profile() {
         current_city: profile.current_city || '',
         current_country: profile.current_country || ''
       });
-      console.log('🔍 Profile useEffect: Form data set successfully');
     } else if (user && !loading) {
       // Initialize form for new profile creation
-      console.log('🔍 Profile useEffect: Initializing form for new profile creation');
       setFormData({
         name: user?.user_metadata?.name || user?.email?.split('@')[0] || '',
         phone: '',
@@ -118,17 +74,11 @@ export default function Profile() {
         current_city: '',
         current_country: ''
       });
-    } else {
-      console.log('🔍 Profile useEffect: No profile data available yet or still loading');
     }
   }, [profile, user, loading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('🔍 Profile handleSubmit: Form submission triggered at', new Date().toISOString());
-    console.log('🔍 Profile handleSubmit: Current form data:', formData);
-    console.log('🔍 Profile handleSubmit: Current profile:', profile ? { id: profile.id, email: profile.email } : 'No profile - will create new');
-    console.log('🔍 Profile handleSubmit: User:', user ? { id: user.id, email: user.email } : 'No user');
     
     // Validate required fields
     if (!formData.name.trim()) {
@@ -164,26 +114,16 @@ export default function Profile() {
         current_country: formData.current_country?.trim() || null,
         profile_completed: true // Mark profile as completed after saving
       };
-      
-      console.log('🔍 Profile handleSubmit: Prepared update data:', updateData);
 
       await updateProfile(updateData);
       
       if (profile) {
         toast.success('Profile updated successfully!');
         setIsEditing(false);
-        console.log('✅ Profile handleSubmit: Profile update completed successfully');
       } else {
         toast.success('Profile created successfully! Welcome to the alumni network!');
-        console.log('✅ Profile handleSubmit: Profile creation completed successfully');
       }
     } catch (error: any) {
-      console.error('❌ Profile handleSubmit: Save failed:', error);
-      console.error('❌ Profile handleSubmit: Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details
-      });
       toast.error(error.message || 'Failed to save profile. Please try again.');
     }
   };
@@ -196,32 +136,11 @@ export default function Profile() {
   };
 
   if (loading) {
-    console.log('🔍 Profile Component: Rendering loading state');
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
-
-  console.log('🔍 Profile Component: Render decision logic:', {
-    hasUser: !!user,
-    hasProfile: !!profile,
-    loading,
-    timestamp: new Date().toISOString()
-  });
-
-  if (loading) {
-    console.log('🔍 Profile Component: Auth still loading - showing loading state');
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profile...</p>
-          <p className="text-sm text-gray-500 mt-2">Debug: Auth loading state</p>
         </div>
       </div>
     );
@@ -233,152 +152,6 @@ export default function Profile() {
   }
 
   if (!profile) {
-    console.log('🔍 Profile Component: User exists but no profile - allowing profile creation');
-
-    // Add a debug button to test database connection
-    const testDatabaseConnection = async () => {
-      console.log('🧪 Testing database connection...');
-      setDebugInfo(prev => [...prev, '🧪 Starting comprehensive database test...']);
-      
-      // First, check environment variables
-      console.log('🧪 Environment Check:', {
-        supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-        hasAnonKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
-        anonKeyLength: import.meta.env.VITE_SUPABASE_ANON_KEY?.length || 0
-      });
-      setDebugInfo(prev => [...prev, `Environment: URL=${import.meta.env.VITE_SUPABASE_URL}, Key Length=${import.meta.env.VITE_SUPABASE_ANON_KEY?.length || 0}`]);
-
-      // Check if supabase client is initialized
-      console.log('🧪 Supabase Client:', {
-        hasSupabase: !!supabase,
-        supabaseType: typeof supabase
-      });
-
-      try {
-        // Pre-flight check: Test basic Supabase connectivity
-        console.log('🧪 Pre-flight: Testing basic Supabase connectivity...');
-        setDebugInfo(prev => [...prev, '🧪 Testing basic Supabase connectivity...']);
-        const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
-        const healthHeaders: HeadersInit = {
-          apikey: anonKey,
-          Authorization: `Bearer ${anonKey}`,
-        };
-
-        const healthCheck = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
-          method: 'HEAD',
-          headers: healthHeaders,
-        });
-        
-        console.log('🧪 Pre-flight result:', {
-          status: healthCheck.status,
-          statusText: healthCheck.statusText,
-          ok: healthCheck.ok
-        });
-        setDebugInfo(prev => [...prev, `✅ Connectivity: ${healthCheck.status} ${healthCheck.statusText}`]);
-
-        if (!healthCheck.ok) {
-          throw new Error(`Supabase connectivity check failed: ${healthCheck.status} ${healthCheck.statusText}`);
-        }
-
-        // Test current user authentication
-        console.log('🧪 Testing current user authentication...');
-        setDebugInfo(prev => [...prev, '🧪 Checking user authentication...']);
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError) {
-          console.error('🧪 User auth error:', userError);
-          setDebugInfo(prev => [...prev, `❌ Auth Error: ${userError.message}`]);
-        } else {
-          console.log('🧪 Current user:', { email: user?.email, id: user?.id });
-          setDebugInfo(prev => [...prev, `✅ User: ${user?.email || 'No user'} (ID: ${user?.id || 'No ID'})`]);
-        }
-
-        // Test alumni table access with specific schema validation
-        console.log('🧪 Testing alumni table with expected schema...');
-        setDebugInfo(prev => [...prev, '🧪 Testing alumni table access...']);
-        
-        try {
-          // Try to access the alumni table with specific columns from the schema
-          console.log('🧪 Attempting alumni table query...');
-          const { data: schemaTest, error: schemaError } = await supabase
-            .from('alumni')
-            .select('id, email, name, batch_year, role, created_at, profile_completed')
-            .limit(1);
-          
-          console.log('🧪 Alumni table query result:', { schemaTest, schemaError });
-          
-          if (schemaError) {
-            console.error('🧪 Alumni table schema test failed:', schemaError);
-            setDebugInfo(prev => [...prev, `❌ Alumni Table Error: ${schemaError.message}`]);
-            setDebugInfo(prev => [...prev, `Error Code: ${schemaError.code}`]);
-            setDebugInfo(prev => [...prev, `Error Details: ${schemaError.details || 'No details'}`]);
-            
-            // Check specific error types
-            if (schemaError.message.includes('permission denied') || schemaError.code === 'PGRST116') {
-              setDebugInfo(prev => [...prev, '🔐 This is likely a Row Level Security (RLS) policy issue']);
-              setDebugInfo(prev => [...prev, '💡 Solution: Need to add RLS policies for authenticated users']);
-            } else if (schemaError.message.includes('does not exist')) {
-              setDebugInfo(prev => [...prev, '📋 The alumni table does not exist in the database']);
-              setDebugInfo(prev => [...prev, '💡 Solution: Need to run database migration scripts']);
-            } else {
-              setDebugInfo(prev => [...prev, `🔍 Unexpected error type: ${schemaError.code}`]);
-            }
-          } else {
-            console.log('🧪 Alumni table accessible:', { recordCount: schemaTest?.length || 0 });
-            setDebugInfo(prev => [...prev, `✅ Alumni Table: Found ${schemaTest?.length || 0} records`]);
-            if (schemaTest && schemaTest.length > 0) {
-              setDebugInfo(prev => [...prev, `Sample record: ${JSON.stringify(schemaTest[0], null, 2)}`]);
-            }
-          }
-        } catch (tableError) {
-          console.error('🧪 Alumni table access exception:', tableError);
-          setDebugInfo(prev => [...prev, `❌ Table Exception: ${tableError}`]);
-        }
-
-        // Test INSERT permission (what we need for profile creation)
-        console.log('🧪 Testing INSERT permission on alumni table...');
-        setDebugInfo(prev => [...prev, '🧪 Testing INSERT permission...']);
-        
-        try {
-          // Try a mock insert to test permissions (this will fail but should give us permission info)
-          const { data: insertTest, error: insertError } = await supabase
-            .from('alumni')
-            .insert({
-              email: 'test@example.com',
-              name: 'Test User',
-              batch_year: 2024
-            })
-            .select()
-            .limit(1);
-          
-          if (insertError) {
-            console.log('🧪 INSERT test error (expected):', insertError);
-            setDebugInfo(prev => [...prev, `INSERT Test: ${insertError.message}`]);
-            
-            if (insertError.message.includes('duplicate key') || insertError.code === '23505') {
-              setDebugInfo(prev => [...prev, '✅ INSERT permission works (duplicate key error is expected)']);
-            } else if (insertError.message.includes('permission denied') || insertError.code === 'PGRST116') {
-              setDebugInfo(prev => [...prev, '❌ No INSERT permission - RLS policy needed']);
-            }
-          } else {
-            setDebugInfo(prev => [...prev, '⚠️ INSERT test unexpectedly succeeded - cleaning up...']);
-            // Clean up the test record
-            if (insertTest && insertTest[0]) {
-              await supabase.from('alumni').delete().eq('id', insertTest[0].id);
-            }
-          }
-        } catch (insertException) {
-          console.error('🧪 INSERT test exception:', insertException);
-          setDebugInfo(prev => [...prev, `INSERT Exception: ${insertException}`]);
-        }
-
-        setDebugInfo(prev => [...prev, '🧪 Database test completed. Check logs for details.']);
-        
-      } catch (error) {
-        console.error('🧪 Connection test failed:', error);
-        setDebugInfo(prev => [...prev, `❌ Connection test failed: ${error}`]);
-      }
-    };
-
     return (
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -394,45 +167,6 @@ export default function Profile() {
                   <p className="text-primary-light mt-2">Welcome! Let's set up your alumni profile</p>
                   <p className="text-primary-light text-sm mt-1">{user?.email}</p>
                 </div>
-              </div>
-            </div>
-
-            {/* Debug Section */}
-            <div className="p-6 bg-yellow-50 border-b">
-              <h3 className="text-lg font-semibold text-yellow-800 mb-2">Debug Tools</h3>
-              <p className="text-yellow-700 text-sm mb-4">
-                Profile not found. Use this button to test database connection:
-              </p>
-              <button
-                onClick={testDatabaseConnection}
-                className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700"
-              >
-                🧪 Test Database Connection
-              </button>
-              
-              {debugInfo.length > 0 && (
-                <div className="mt-4 p-4 bg-white border rounded-md">
-                  <h4 className="font-semibold text-gray-800 mb-2">Debug Results:</h4>
-                  <div className="space-y-1 text-sm font-mono">
-                    {debugInfo.map((info, index) => (
-                      <div key={index} className="text-gray-700">
-                        {info}
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => setDebugInfo([])}
-                    className="mt-2 text-xs bg-gray-500 text-white px-2 py-1 rounded hover:bg-gray-600"
-                  >
-                    Clear
-                  </button>
-                </div>
-              )}
-              
-              <div className="mt-4 text-xs text-yellow-600">
-                <p>User ID: {user?.id}</p>
-                <p>Email: {user?.email}</p>
-                <p>Auth Loading: {loading ? 'Yes' : 'No'}</p>
               </div>
             </div>
 
@@ -525,10 +259,6 @@ export default function Profile() {
       </div>
     );
   }
-
-  console.log('🔍 Profile Component: Rendering main profile UI');
-  console.log('🔍 Profile Component: Form data state:', formData);
-  console.log('🔍 Profile Component: Is editing:', isEditing);
   
   return (
     <div className="min-h-screen bg-gray-50 py-8">

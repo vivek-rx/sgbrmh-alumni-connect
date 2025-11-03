@@ -73,20 +73,8 @@ export default function Events() {
   });
 
   useEffect(() => {
-    if (!user) {
-      toast.error("Please login to view events");
-      navigate("/auth/login");
-      return;
-    }
-    if (profile && !profile.verified) {
-      toast.error("Only verified users can view events");
-      navigate("/");
-      return;
-    }
-    if (profile?.verified) {
-      fetchEvents();
-    }
-  }, [profile, user, navigate]);
+    fetchEvents();
+  }, []);
 
   const fetchEvents = async () => {
     try {
@@ -97,22 +85,34 @@ export default function Events() {
         .eq("is_active", true)
         .order("event_date", { ascending: true });
       if (error) throw error;
-      const eventsWithRegistrationStatus = await Promise.all(
-        (data || []).map(async (event: any) => {
-          const { data: registrationData } = await supabase
-            .from("event_registrations")
-            .select("id")
-            .eq("event_id", event.id)
-            .eq("alumni_id", user?.id)
-            .single();
-          return {
-            ...event,
-            organizer_name: event.alumni?.name || "Admin",
-            is_registered: !!registrationData,
-          };
-        }),
-      );
-      setEvents(eventsWithRegistrationStatus);
+      
+      // Only check registration status if user is logged in
+      if (user) {
+        const eventsWithRegistrationStatus = await Promise.all(
+          (data || []).map(async (event: any) => {
+            const { data: registrationData } = await supabase
+              .from("event_registrations")
+              .select("id")
+              .eq("event_id", event.id)
+              .eq("alumni_id", user.id)
+              .single();
+            return {
+              ...event,
+              organizer_name: event.alumni?.name || "Admin",
+              is_registered: !!registrationData,
+            };
+          }),
+        );
+        setEvents(eventsWithRegistrationStatus);
+      } else {
+        // For non-logged-in users, just show events without registration status
+        const eventsData = (data || []).map((event: any) => ({
+          ...event,
+          organizer_name: event.alumni?.name || "Admin",
+          is_registered: false,
+        }));
+        setEvents(eventsData);
+      }
     } catch (error) {
       console.error("Error fetching events:", error);
       toast.error("Failed to load events");
@@ -174,10 +174,20 @@ export default function Events() {
     maxAttendees: number | null,
     currentAttendees: number,
   ) => {
-    if (!profile?.verified) {
-      toast.error("Only verified users can register for events");
+    // Check if user is logged in
+    if (!user) {
+      toast.error("Please login to register for events");
+      navigate("/auth/login");
       return;
     }
+
+    // Check if user is verified
+    if (!profile?.verified) {
+      toast.error("Only verified users can register for events. Please wait for admin verification.");
+      return;
+    }
+
+    // Check if event is full
     if (maxAttendees && currentAttendees >= maxAttendees) {
       toast.error("Event is full");
       return;
@@ -430,6 +440,29 @@ export default function Events() {
                             <CheckCircle className="w-5 h-5 mr-2" />
                             Registered
                           </div>
+                        ) : !user ? (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              toast.error("Please login to register for events");
+                              navigate("/auth/login");
+                            }}
+                            className="w-full px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white font-medium rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-md"
+                          >
+                            Login to Register
+                          </motion.button>
+                        ) : !profile?.verified ? (
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              toast.error("Only verified users can register for events. Please wait for admin verification.");
+                            }}
+                            className="w-full px-4 py-2 bg-gray-400 text-white font-medium rounded-lg cursor-not-allowed"
+                          >
+                            Verification Required
+                          </motion.button>
                         ) : (
                           <motion.button
                             whileHover={{ scale: 1.02 }}

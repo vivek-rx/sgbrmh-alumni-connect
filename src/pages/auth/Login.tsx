@@ -99,16 +99,29 @@ export default function Login() {
         console.error('❌ Profile Error:', profileError);
         
         if (profileError.code === 'PGRST116') {
-          toast.error('User profile not found. Please register again or contact support.');
+          // Profile doesn't exist - redirect to profile creation
+          console.log('ℹ️ Profile not found - redirecting to profile creation');
+          toast.success('Welcome! Please complete your profile to continue.', {
+            duration: 4000,
+            icon: '👋'
+          });
+          navigate('/profile', { replace: true });
+          return;
         } else {
           toast.error(`Profile lookup failed: ${profileError.message}`);
+          return;
         }
-        return;
       }
 
       if (!profile) {
         console.error('❌ No profile data returned');
-        toast.error('User profile not found. Please contact support.');
+        // Redirect to profile creation if profile doesn't exist
+        console.log('ℹ️ No profile data - redirecting to profile creation');
+        toast.success('Welcome! Please complete your profile to continue.', {
+          duration: 4000,
+          icon: '👋'
+        });
+        navigate('/profile', { replace: true });
         return;
       }
 

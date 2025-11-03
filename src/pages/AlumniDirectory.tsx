@@ -1,10 +1,10 @@
-import { motion } from 'framer-motion';
-import { AlumniCard } from '@/components/AlumniCard';
-import { Search, Filter, Users, Loader2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Users, Loader2, AlertCircle, ArrowLeft, GraduationCap, MapPin, User, UserPlus, Mail, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface AlumniData {
   id: string;
@@ -23,18 +23,28 @@ interface AlumniData {
   created_at?: string;
 }
 
+interface BatchStats {
+  year: number;
+  count: number;
+  verified_count: number;
+}
+
 export default function AlumniDirectory() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBatch, setSelectedBatch] = useState('all');
+  const [selectedBatch, setSelectedBatch] = useState<number | null>(null);
   const [alumni, setAlumni] = useState<AlumniData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, profile } = useAuth(); // Get current logged-in user info
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
 
-  // Check if current user is verified
-  const isCurrentUserVerified = profile?.verified || false;
+  const isLoggedIn = !!user;
+  const isVerified = profile?.verified || false;
 
-  // Fetch alumni from database
   useEffect(() => {
     fetchAlumni();
   }, []);
@@ -44,23 +54,15 @@ export default function AlumniDirectory() {
       setLoading(true);
       setError(null);
 
-      console.log('🔍 Fetching alumni from database...');
       const { data, error: fetchError } = await supabase
         .from('alumni')
         .select('*')
-        .neq('role', 'admin') // Exclude admin users from directory
-        .order('created_at', { ascending: false });
+        .neq('role', 'admin')
+        .order('batch_year', { ascending: false });
 
-      if (fetchError) {
-        console.error('❌ Error fetching alumni:', fetchError);
-        throw fetchError;
-      }
-
-      console.log('✅ Alumni fetched successfully:', data);
-      console.log('📊 Total alumni count:', data?.length || 0);
+      if (fetchError) throw fetchError;
       setAlumni(data || []);
     } catch (err: any) {
-      console.error('Failed to fetch alumni:', err);
       setError(err.message || 'Failed to load alumni');
       toast.error('Failed to load alumni directory');
     } finally {
@@ -68,17 +70,135 @@ export default function AlumniDirectory() {
     }
   };
 
+  // Get batch statistics
+  const batchStats: BatchStats[] = alumni.reduce((acc, alum) => {
+    const existing = acc.find(b => b.year === alum.batch_year);
+    if (existing) {
+      existing.count++;
+      if (alum.verified) existing.verified_count++;
+    } else {
+      acc.push({
+        year: alum.batch_year,
+        count: 1,
+        verified_count: alum.verified ? 1 : 0
+      });
+    }
+    return acc;
+  }, [] as BatchStats[]).sort((a, b) => b.year - a.year);
+
+  // Filter alumni by selected batch and search
   const filteredAlumni = alumni.filter(alum => {
-    const matchesSearch = alum.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alum.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alum.current_city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         alum.current_country?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesBatch = selectedBatch === 'all' || alum.batch_year.toString() === selectedBatch;
-    return matchesSearch && matchesBatch;
+    if (selectedBatch && alum.batch_year !== selectedBatch) return false;
+    
+    if (searchTerm) {
+      const matchesSearch = alum.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           alum.current_city?.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    }
+    
+    return true;
   });
 
-  // Get unique batch years from alumni data
-  const batchYears = Array.from(new Set(alumni.map(a => a.batch_year))).sort((a, b) => b - a);
+  const handleInviteBatchmate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!inviteEmail.trim() || !inviteName.trim()) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setSendingInvite(true);
+    try {
+      // Check if email already exists
+      const { data: existingUser } = await supabase
+        .from('alumni')
+        .select('email')
+        .eq('email', inviteEmail.toLowerCase())
+        .single();
+
+      if (existingUser) {
+        toast.error('This email is already registered');
+        setSendingInvite(false);
+        return;
+      }
+
+      // Generate unique invitation token
+      const invitationToken = crypto.randomUUID();
+      
+      // Create invitation record
+      const { data: invitationData, error: inviteError } = await supabase
+        .from('alumni_invitations')
+        .insert({
+          invited_by: user?.id,
+          invited_email: inviteEmail.toLowerCase(),
+          invited_name: inviteName.trim(),
+          batch_year: selectedBatch || profile?.batch_year,
+          status: 'pending',
+          invitation_token: invitationToken,
+          invited_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (inviteError) {
+        if (inviteError.code === '23505') {
+          toast.error('An invitation has already been sent to this email');
+        } else {
+          throw inviteError;
+        }
+        setSendingInvite(false);
+        return;
+      }
+
+      // Create invitation link
+      const inviteLink = `${window.location.origin}/auth/register?invite=${invitationToken}`;
+      
+      // Send invitation email using Supabase
+      try {
+        // Call Supabase Edge Function to send email
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            to: inviteEmail.toLowerCase(),
+            invitedName: inviteName.trim(),
+            inviterName: profile?.name || 'An alumni',
+            batchYear: selectedBatch || profile?.batch_year,
+            inviteLink: inviteLink
+          }
+        });
+
+        if (emailError) {
+          console.error('Email sending error:', emailError);
+          // Don't fail the invitation if email fails
+          toast.success(`Invitation created! Share this link with ${inviteName}: ${inviteLink}`, {
+            duration: 10000
+          });
+        } else {
+          toast.success(`Invitation email sent to ${inviteName}!`);
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        // Fallback: show the link to copy manually
+        toast.success(`Invitation created! Share this link: ${inviteLink}`, {
+          duration: 10000
+        });
+      }
+      
+      setInviteEmail('');
+      setInviteName('');
+      setShowInviteModal(false);
+    } catch (error: any) {
+      toast.error('Failed to send invitation');
+    } finally {
+      setSendingInvite(false);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -91,6 +211,35 @@ export default function AlumniDirectory() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading alumni directory...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">Error loading alumni</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button
+            onClick={fetchAlumni}
+            className="px-6 py-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50">
       {/* Hero Header */}
@@ -98,9 +247,7 @@ export default function AlumniDirectory() {
         className="relative py-16 bg-gradient-to-r from-orange-600 via-red-700 to-orange-800 overflow-hidden"
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
       >
-        {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <svg width="100%" height="100%" viewBox="0 0 100 100">
             <defs>
@@ -117,175 +264,283 @@ export default function AlumniDirectory() {
             className="text-5xl font-bold text-white mb-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
           >
             Alumni Directory
           </motion.h1>
           <motion.p 
-            className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto"
+            className="text-xl text-orange-100 mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
+            transition={{ delay: 0.2 }}
           >
-            Connect with our amazing alumni community across the globe
+            {selectedBatch ? `Batch of ${selectedBatch}` : 'Explore by batch year'}
           </motion.p>
           
-          {/* Stats */}
-          <motion.div 
-            className="flex justify-center space-x-8 text-white"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            <div className="text-center">
-              <div className="text-3xl font-bold">{alumni.length}</div>
-              <div className="text-orange-200">Alumni</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold">{alumni.filter(a => a.verified).length}</div>
-              <div className="text-orange-200">Verified</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold">{new Set(alumni.map(a => a.current_country).filter(Boolean)).size}</div>
-              <div className="text-orange-200">Countries</div>
-            </div>
-          </motion.div>
-        </div>
-      </motion.section>
-
-      {/* Search and Filters */}
-      <motion.section 
-        className="py-8 bg-white/50 backdrop-blur-sm border-b border-orange-200/30"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.8 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            {/* Search Bar */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name, email, or location..."
-                className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {/* Batch Filter */}
-            <div className="flex items-center space-x-4">
-              <Filter className="h-5 w-5 text-gray-600" />
-              <select
-                className="px-4 py-3 rounded-full border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-300"
-                value={selectedBatch}
-                onChange={(e) => setSelectedBatch(e.target.value)}
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            {selectedBatch && (
+              <motion.button
+                onClick={() => setSelectedBatch(null)}
+                className="inline-flex items-center px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
               >
-                <option value="all">All Batches</option>
-                {batchYears.map(year => (
-                  <option key={year} value={year.toString()}>{year}</option>
-                ))}
-              </select>
-            </div>
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Batches
+              </motion.button>
+            )}
+            
+            {isVerified && (
+              <motion.button
+                onClick={() => setShowInviteModal(true)}
+                className="inline-flex items-center px-6 py-3 bg-white text-orange-600 rounded-full font-semibold hover:bg-orange-50 transition-colors shadow-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <UserPlus className="w-5 h-5 mr-2" />
+                Invite Batchmate
+              </motion.button>
+            )}
           </div>
-
-          {/* Results Info */}
-          <motion.div 
-            className="mt-4 text-center text-gray-600"
-            key={filteredAlumni.length}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            Showing {filteredAlumni.length} of {alumni.length} alumni
-          </motion.div>
         </div>
       </motion.section>
 
-      {/* Alumni Cards Grid */}
-      <motion.section 
-        className="py-12"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="h-12 w-12 text-orange-500 animate-spin mb-4" />
-              <p className="text-gray-600">Loading alumni directory...</p>
-            </div>
-          ) : error ? (
-            <motion.div 
-              className="text-center py-16"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+      {/* Invite Modal */}
+      <AnimatePresence>
+        {showInviteModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowInviteModal(false)}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">Error loading alumni</h3>
-              <p className="text-gray-500 mb-4">{error}</p>
-              <button
-                onClick={fetchAlumni}
-                className="px-6 py-2 bg-orange-500 text-white rounded-full hover:bg-orange-600 transition-colors"
-              >
-                Try Again
-              </button>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Invite Batchmate</h2>
+                <button
+                  onClick={() => setShowInviteModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleInviteBatchmate} className="space-y-4">
+                <div>
+                  <label htmlFor="inviteName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="inviteName"
+                    value={inviteName}
+                    onChange={(e) => setInviteName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Enter their name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="inviteEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="email"
+                      id="inviteEmail"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="their.email@example.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {selectedBatch && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <p className="text-sm text-orange-800">
+                      <strong>Batch:</strong> {selectedBatch}
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingInvite}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingInvite ? 'Sending...' : 'Send Invitation'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
-          ) : filteredAlumni.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredAlumni.map((alum, index) => (
-                <AlumniCard 
-                  key={alum.id} 
-                  alumni={alum} 
-                  index={index}
-                  canViewProfile={isCurrentUserVerified}
-                />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {!selectedBatch ? (
+          /* Batch Cards View */
+          <div>
+            <motion.div 
+              className="mb-8 text-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Select a Batch</h2>
+              <p className="text-gray-600">Click on a batch to view alumni profiles</p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {batchStats.map((batch, index) => (
+                <motion.div
+                  key={batch.year}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  onClick={() => setSelectedBatch(batch.year)}
+                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer p-6 border-2 border-transparent hover:border-orange-500"
+                >
+                  <div className="flex items-center justify-center mb-4">
+                    <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-full p-4">
+                      <GraduationCap className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-center text-gray-900 mb-2">
+                    Batch of {batch.year}
+                  </h3>
+                  <div className="flex justify-center items-center space-x-4 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      <Users className="w-4 h-4 mr-1" />
+                      <span>{batch.count} Alumni</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                      {batch.verified_count} Verified
+                    </span>
+                  </div>
+                </motion.div>
               ))}
             </div>
-          ) : (
-            <motion.div 
-              className="text-center py-16"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No alumni found</h3>
-              <p className="text-gray-500">
-                {alumni.length === 0 
-                  ? 'No alumni registered yet. Be the first to join!' 
-                  : 'Try adjusting your search criteria'}
+          </div>
+        ) : (
+          /* Alumni Profiles View */
+          <div>
+            {/* Search Bar */}
+            <div className="mb-8">
+              <div className="relative max-w-md mx-auto">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or location..."
+                  className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <p className="text-center mt-4 text-gray-600">
+                Showing {filteredAlumni.length} alumni from Batch of {selectedBatch}
               </p>
-            </motion.div>
-          )}
-        </div>
-      </motion.section>
+            </div>
 
-      {/* CTA Section */}
-      <motion.section 
-        className="py-16 bg-gradient-to-r from-orange-500 to-red-600"
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
-      >
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Join Our Alumni Network
-          </h2>
-          <p className="text-xl text-orange-100 mb-8">
-            Connect, share experiences, and help the next generation grow
-          </p>
-          <motion.a
-            href="/auth/register"
-            className="inline-block px-8 py-4 bg-white text-orange-600 rounded-full font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Register as Alumni
-          </motion.a>
-        </div>
-      </motion.section>
+            {/* Alumni Cards */}
+            {filteredAlumni.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAlumni.map((alum, index) => (
+                  <motion.div
+                    key={alum.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    onClick={() => {
+                      if (isVerified) {
+                        navigate(`/alumni/${alum.id}`);
+                      } else if (!isLoggedIn) {
+                        toast.error('Please login to view full profiles');
+                        navigate('/auth/login');
+                      } else {
+                        toast.error('Only verified users can view full profiles');
+                      }
+                    }}
+                    className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-center mb-4">
+                        <div className="h-16 w-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+                          {alum.profile_photo_url ? (
+                            <img
+                              src={alum.profile_photo_url}
+                              alt={alum.name}
+                              className="h-16 w-16 rounded-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-8 h-8" />
+                          )}
+                        </div>
+                        <div className="ml-4 flex-1 min-w-0">
+                          <h3 className="text-lg font-bold text-gray-900 truncate">{alum.name}</h3>
+                          <p className="text-sm text-gray-600">Batch of {alum.batch_year}</p>
+                          {alum.verified && (
+                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                              Verified
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {(isLoggedIn && isVerified) ? (
+                        <>
+                          {alum.current_city && (
+                            <div className="flex items-center text-sm text-gray-600 mb-2">
+                              <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                              <span className="truncate">{alum.current_city}{alum.current_country ? `, ${alum.current_country}` : ''}</span>
+                            </div>
+                          )}
+                          {alum.bio && (
+                            <p className="text-sm text-gray-600 line-clamp-2 mt-3">{alum.bio}</p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-2">
+                          <p className="text-sm text-gray-500 italic">
+                            {isLoggedIn ? 'Verification required to view details' : 'Login to view full profile'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No alumni found</h3>
+                <p className="text-gray-500">Try adjusting your search criteria</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
