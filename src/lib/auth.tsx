@@ -16,6 +16,9 @@ export interface Alumni {
   date_of_birth?: string | null;
   age?: number | null;
   bio?: string | null;
+  college_name?: string | null;
+  profession?: string | null;
+  company_name?: string | null;
   whatsapp_number?: string | null;
   facebook_url?: string | null;
   instagram_url?: string | null;
@@ -26,6 +29,9 @@ export interface Alumni {
   portfolio_url?: string | null;
   current_city?: string | null;
   current_country?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  country_code?: string | null;
   role?: 'admin' | 'alumni' | 'student' | 'guest';
   verified?: boolean;
   profile_completed?: boolean;

@@ -10,12 +10,18 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@heroicons/react": "^2.0.18",
+    "@mui/material": "^7.3.4",
+    "@mui/x-date-pickers": "^8.16.0",
     "@supabase/supabase-js": "^2.58.0",
+    "dayjs": "^1.11.19",
     "firebase": "^10.7.0",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.294.0",
     "react": "^18.2.0",
+    "react-country-state-city": "^1.1.12",
     "react-dom": "^18.2.0",
     "react-firebase-hooks": "^5.1.1",
     "react-hot-toast": "^2.6.0",

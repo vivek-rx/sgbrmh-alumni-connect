@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X, Briefcase, GraduationCap, Link as LinkIcon, Camera, CheckCircle } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs, { Dayjs } from 'dayjs';
+import { CountrySelect, StateSelect, CitySelect } from 'react-country-state-city';
+import 'react-country-state-city/dist/react-country-state-city.css';
+import { getCoordinates, getCountryCode } from '../lib/geocoding';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Profile() {
   const { user, profile, updateProfile, loading } = useAuth();
@@ -32,9 +40,24 @@ export default function Profile() {
     current_country: ''
   });
 
+  const [showOtherCollege, setShowOtherCollege] = useState(false);
+  
+  // Location state for react-country-state-city
+  const [countryId, setCountryId] = useState(0);
+  const [stateId, setStateId] = useState(0);
+  const [cityData, setCityData] = useState<any>(null);
+  const [countryData, setCountryData] = useState<any>(null);
+  
+  // Geographic coordinates for mapping
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+
   // Load profile data into form
   useEffect(() => {
     if (profile) {
+      const collegeName = profile.college_name || '';
+      const predefinedColleges = ['VIT', 'VU', 'VIIT', 'PICT', 'Sinhagad'];
+      const isOther = Boolean(collegeName && !predefinedColleges.includes(collegeName));
+      
       setFormData({
         name: profile.name || '',
         phone: profile.phone || '',
@@ -44,7 +67,7 @@ export default function Profile() {
         date_of_birth: profile.date_of_birth || '',
         age: profile.age?.toString() || '',
         bio: profile.bio || '',
-        college_name: profile.college_name || '',
+        college_name: collegeName,
         profession: profile.profession || '',
         company_name: profile.company_name || '',
         whatsapp_number: profile.whatsapp_number || '',
@@ -58,6 +81,8 @@ export default function Profile() {
         current_city: profile.current_city || '',
         current_country: profile.current_country || ''
       });
+      
+      setShowOtherCollege(isOther);
     } else if (user && !loading) {
       // Initialize form for new profile creation
       setFormData({
@@ -89,20 +114,30 @@ export default function Profile() {
   // Calculate age automatically when date_of_birth changes
   useEffect(() => {
     if (formData.date_of_birth) {
-      const birthDate = new Date(formData.date_of_birth);
-      const today = new Date();
-      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        calculatedAge--;
-      }
+      const birthDate = dayjs(formData.date_of_birth);
+      const today = dayjs();
+      const calculatedAge = today.diff(birthDate, 'year');
       
       if (calculatedAge >= 0 && calculatedAge <= 150) {
         setFormData(prev => ({ ...prev, age: calculatedAge.toString() }));
       }
     }
   }, [formData.date_of_birth]);
+
+  // Fetch coordinates when city and country are selected
+  useEffect(() => {
+    const fetchCoordinates = async () => {
+      if (formData.current_city && formData.current_country) {
+        const coords = await getCoordinates(formData.current_city, formData.current_country);
+        if (coords) {
+          setCoordinates(coords);
+          console.log('Coordinates fetched:', coords);
+        }
+      }
+    };
+
+    fetchCoordinates();
+  }, [formData.current_city, formData.current_country]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,12 +155,12 @@ export default function Profile() {
     
     try {
       // Prepare update data, converting strings to appropriate types
-      const updateData = {
+      const updateData: any = {
         name: formData.name.trim(),
         phone: formData.phone?.trim() || null,
         batch_year: formData.batch_year ? parseInt(formData.batch_year) : new Date().getFullYear(),
         gender: formData.gender ? formData.gender as 'male' | 'female' | 'other' | 'prefer_not_to_say' : null,
-        marital_status: formData.marital_status ? formData.marital_status as 'single' | 'married' | 'divorced' | 'widowed' | 'separated' | 'prefer_not_to_say' : null,
+        marital_status: formData.marital_status ? formData.marital_status as 'single' | 'married' | 'prefer_not_to_say' : null,
         date_of_birth: formData.date_of_birth || null,
         age: formData.age ? parseInt(formData.age) : null,
         bio: formData.bio?.trim() || null,
@@ -144,6 +179,20 @@ export default function Profile() {
         current_country: formData.current_country?.trim() || null,
         profile_completed: true // Mark profile as completed after saving
       };
+
+      // Add geographic coordinates if available
+      if (coordinates) {
+        updateData.latitude = coordinates.latitude;
+        updateData.longitude = coordinates.longitude;
+      }
+
+      // Add country code if available
+      if (formData.current_country) {
+        const countryCode = getCountryCode(formData.current_country);
+        if (countryCode) {
+          updateData.country_code = countryCode;
+        }
+      }
 
       await updateProfile(updateData);
       
@@ -172,11 +221,18 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-red-50/20 flex items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 mx-auto"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-t-orange-500 border-r-red-500 absolute top-0 left-1/2 -translate-x-1/2"></div>
+          </div>
+          <p className="mt-6 text-gray-700 font-medium">Loading your profile...</p>
+        </motion.div>
       </div>
     );
   }
@@ -188,224 +244,379 @@ export default function Profile() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            {/* Header */}
-            <div className="bg-primary text-white px-6 py-8">
-              <div className="flex items-center">
-                <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center">
-                  <User className="h-12 w-12 text-primary" />
-                </div>
-                <div className="ml-6">
-                  <h1 className="text-3xl font-bold">Complete Your Profile</h1>
-                  <p className="text-primary-light mt-2">Welcome! Let's set up your alumni profile</p>
-                  <p className="text-primary-light text-sm mt-1">{user?.email}</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-red-50/20 py-12">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8"
+        >
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+            {/* Header with Gradient */}
+            <div className="relative bg-gradient-to-r from-orange-500 via-red-500 to-red-600 px-8 py-12 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-32 translate-x-32"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-24 -translate-x-24"></div>
+              
+              <div className="relative flex items-center">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="h-24 w-24 bg-white rounded-full flex items-center justify-center shadow-lg"
+                >
+                  <User className="h-14 w-14 text-orange-500" />
+                </motion.div>
+                <div className="ml-8">
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-4xl font-bold text-white"
+                  >
+                    Complete Your Profile
+                  </motion.h1>
+                  <motion.p 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="text-orange-100 mt-2 text-lg"
+                  >
+                    Welcome to the SGBRMH Alumni Network! Let's set up your profile
+                  </motion.p>
+                  <motion.p 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="text-orange-200/80 text-sm mt-1 flex items-center gap-2"
+                  >
+                    <Mail className="h-4 w-4" />
+                    {user?.email}
+                  </motion.p>
                 </div>
               </div>
             </div>
 
             {/* Profile Creation Form */}
-            <div className="p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="p-8"
+            >
               <form 
                 onSubmit={handleSubmit}
-                className="space-y-6"
+                className="space-y-8"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Email (Read-only) */}
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                      Email Address (Read-only)
+                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address
                     </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      readOnly
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50"
-                      value={user?.email || ''}
-                    />
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        readOnly
+                        className="pl-11 w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed focus:outline-none"
+                        value={user?.email || ''}
+                      />
+                    </div>
                   </div>
 
                   {/* Name */}
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                      Full Name *
+                    <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Full Name <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      required
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.name}
-                      onChange={handleChange}
-                    />
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        required
+                        className="pl-11 w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="Enter your full name"
+                        value={formData.name}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
 
                   {/* Batch Year */}
                   <div>
-                    <label htmlFor="batch_year" className="block text-sm font-medium text-gray-700">
-                      Batch Year *
+                    <label htmlFor="batch_year" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Batch Year <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="number"
-                      id="batch_year"
-                      name="batch_year"
-                      required
-                      min="1950"
-                      max="2030"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.batch_year}
-                      onChange={handleChange}
-                    />
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="number"
+                        id="batch_year"
+                        name="batch_year"
+                        required
+                        min="1950"
+                        max="2030"
+                        className="pl-11 w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="e.g., 2020"
+                        value={formData.batch_year}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
 
                   {/* Phone */}
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
                       Phone Number
                     </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.phone}
-                      onChange={handleChange}
-                    />
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        className="pl-11 w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="+91 98765 43210"
+                        value={formData.phone}
+                        onChange={handleChange}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* Submit Button */}
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-6">
                   <button
                     type="submit"
-                    className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark flex items-center transition-colors"
+                    className="btn-primary group"
                   >
-                    <User className="h-4 w-4 mr-2" />
+                    <User className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
                     Create Profile
                   </button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Header */}
-          <div className="bg-primary text-white px-6 py-8 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="h-20 w-20 bg-white rounded-full flex items-center justify-center overflow-hidden">
-                {profile.profile_photo_url ? (
-                  <img
-                    src={profile.profile_photo_url}
-                    alt="Profile"
-                    className="h-20 w-20 rounded-full object-cover"
-                  />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50/30 to-red-50/20 py-8">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+      >
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+          {/* Header with Modern Design */}
+          <div className="relative bg-gradient-to-r from-orange-500 via-red-500 to-red-600 px-8 py-12 overflow-hidden">
+            {/* Background Decoration */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-48 translate-x-48"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-32 -translate-x-32"></div>
+            
+            <div className="relative flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-6">
+                {/* Profile Photo */}
+                <motion.div 
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  className="relative group"
+                >
+                  <div className="h-28 w-28 bg-white rounded-full flex items-center justify-center overflow-hidden shadow-2xl ring-4 ring-white/30">
+                    {profile.profile_photo_url ? (
+                      <img
+                        src={profile.profile_photo_url}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-16 w-16 text-orange-500" />
+                    )}
+                  </div>
+                  {profile.verified && (
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-2 shadow-lg ring-4 ring-white"
+                    >
+                      <CheckCircle className="h-5 w-5 text-white" />
+                    </motion.div>
+                  )}
+                </motion.div>
+
+                {/* Profile Info */}
+                <div>
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-3xl lg:text-4xl font-bold text-white flex items-center gap-3"
+                  >
+                    {profile.name || 'Anonymous User'}
+                  </motion.h1>
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="flex flex-wrap items-center gap-4 mt-3 text-orange-100"
+                  >
+                    {profile.batch_year && (
+                      <span className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <GraduationCap className="h-4 w-4" />
+                        Batch {profile.batch_year}
+                      </span>
+                    )}
+                    {profile.current_city && (
+                      <span className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <MapPin className="h-4 w-4" />
+                        {profile.current_city}
+                      </span>
+                    )}
+                    {profile.profession && (
+                      <span className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <Briefcase className="h-4 w-4" />
+                        {profile.profession}
+                      </span>
+                    )}
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Edit Button */}
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4 }}
+                onClick={() => setIsEditing(!isEditing)}
+                className="bg-white text-orange-600 px-6 py-3 rounded-xl hover:bg-orange-50 flex items-center gap-2 transition-all shadow-lg hover:shadow-xl font-semibold group"
+              >
+                {isEditing ? (
+                  <>
+                    <X className="h-5 w-5 group-hover:rotate-90 transition-transform" />
+                    Cancel
+                  </>
                 ) : (
-                  <User className="h-10 w-10 text-primary" />
+                  <>
+                    <Edit3 className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                    Edit Profile
+                  </>
                 )}
-              </div>
-              <div className="ml-6">
-                <h1 className="text-2xl font-bold">{profile.name || 'Anonymous User'}</h1>
-                <p className="text-primary-light opacity-90">
-                  {profile.batch_year && `Batch ${profile.batch_year}`}
-                  {profile.current_city && ` • ${profile.current_city}`}
-                </p>
-              </div>
+              </motion.button>
             </div>
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="bg-white text-primary px-4 py-2 rounded-md hover:bg-gray-100 flex items-center transition-colors"
-            >
-              {isEditing ? (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </>
-              ) : (
-                <>
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </>
-              )}
-            </button>
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <AnimatePresence mode="wait">
             {isEditing ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Full Name */}
+              <motion.div
+                key="editing"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="p-8"
+              >
+                <form onSubmit={handleSubmit} className="space-y-10">
+                  {/* Basic Information Section */}
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      name="name"
-                      required
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.name}
-                      onChange={handleChange}
-                    />
-                  </div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="h-10 w-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Basic Information</h2>
+                        <p className="text-sm text-gray-500">Your personal details</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 rounded-xl p-6">
+                      {/* Full Name */}
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Full Name <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            required
+                            className="pl-11 w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                            placeholder="Enter your full name"
+                            value={formData.name}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
 
-                  {/* Email (readonly) */}
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                      Email Address (Read-only)
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      readOnly
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50"
-                      value={profile?.email || ''}
-                    />
-                  </div>
+                      {/* Email (readonly) */}
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Email Address
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            readOnly
+                            className="pl-11 w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-100 text-gray-500 cursor-not-allowed"
+                            value={profile?.email || ''}
+                          />
+                        </div>
+                      </div>
 
-                  {/* Phone */}
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.phone}
-                      onChange={handleChange}
-                    />
-                  </div>
+                      {/* Phone */}
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Phone Number
+                        </label>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="tel"
+                            id="phone"
+                            name="phone"
+                            className="pl-11 w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                            placeholder="+91 98765 43210"
+                            value={formData.phone}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
 
-                  {/* Batch Year */}
-                  <div>
-                    <label htmlFor="batch_year" className="block text-sm font-medium text-gray-700">
-                      Batch Year *
-                    </label>
-                    <input
-                      type="number"
-                      id="batch_year"
-                      name="batch_year"
-                      required
-                      min="1950"
-                      max="2030"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.batch_year}
-                      onChange={handleChange}
-                    />
+                      {/* Batch Year */}
+                      <div>
+                        <label htmlFor="batch_year" className="block text-sm font-semibold text-gray-700 mb-2">
+                          Batch Year <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input
+                            type="number"
+                            id="batch_year"
+                            name="batch_year"
+                            required
+                            min="1950"
+                            max="2030"
+                            className="pl-11 w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                            placeholder="e.g., 2020"
+                            value={formData.batch_year}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Gender */}
@@ -443,35 +654,50 @@ export default function Profile() {
                       <option value="">Select Status</option>
                       <option value="single">Single</option>
                       <option value="married">Married</option>
-                      <option value="divorced">Divorced</option>
-                      <option value="widowed">Widowed</option>
-                      <option value="separated">Separated</option>
                       <option value="prefer_not_to_say">Prefer not to say</option>
                     </select>
                   </div>
 
-                  {/* Date of Birth - Modern Date Picker */}
+                  {/* Date of Birth - Material-UI Date Picker */}
                   <div>
                     <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700 mb-1">
                       Date of Birth
                     </label>
-                    <div className="relative">
-                      <input
-                        type="date"
-                        id="date_of_birth"
-                        name="date_of_birth"
-                        className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
-                        value={formData.date_of_birth}
-                        onChange={handleChange}
-                        max={new Date().toISOString().split('T')[0]}
-                        style={{
-                          colorScheme: 'light',
-                          WebkitAppearance: 'none',
-                          MozAppearance: 'textfield'
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        value={formData.date_of_birth ? dayjs(formData.date_of_birth) : null}
+                        onChange={(newValue: Dayjs | null) => {
+                          if (newValue && newValue.isValid()) {
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              date_of_birth: newValue.format('YYYY-MM-DD') 
+                            }));
+                          } else if (newValue === null) {
+                            setFormData(prev => ({ 
+                              ...prev, 
+                              date_of_birth: '' 
+                            }));
+                          }
+                        }}
+                        maxDate={dayjs()}
+                        format="DD/MM/YYYY"
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            variant: 'outlined',
+                            placeholder: 'DD/MM/YYYY',
+                            sx: {
+                              '& .MuiOutlinedInput-root': {
+                                borderRadius: '8px',
+                              }
+                            }
+                          },
+                          field: {
+                            readOnly: false
+                          }
                         }}
                       />
-                      <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                    </div>
+                    </LocalizationProvider>
                   </div>
 
                   {/* Age - Auto-calculated */}
@@ -495,15 +721,39 @@ export default function Profile() {
                     <label htmlFor="college_name" className="block text-sm font-medium text-gray-700 mb-1">
                       College/University Name
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="college_name"
                       name="college_name"
-                      placeholder="e.g., University of Pune"
                       className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      value={formData.college_name}
-                      onChange={handleChange}
-                    />
+                      value={showOtherCollege ? 'Other' : formData.college_name}
+                      onChange={(e) => {
+                        if (e.target.value === 'Other') {
+                          setShowOtherCollege(true);
+                          setFormData(prev => ({ ...prev, college_name: '' }));
+                        } else {
+                          setShowOtherCollege(false);
+                          setFormData(prev => ({ ...prev, college_name: e.target.value }));
+                        }
+                      }}
+                    >
+                      <option value="">Select College/University</option>
+                      <option value="VIT">VIT (Vishwakarma Institute of Technology)</option>
+                      <option value="VU">VU (Vishwakarma University)</option>
+                      <option value="VIIT">VIIT (Vishwakarma Institute of Information Technology)</option>
+                      <option value="PICT">PICT (Pune Institute of Computer Technology)</option>
+                      <option value="Sinhagad">Sinhagad Institutes</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {showOtherCollege && (
+                      <input
+                        type="text"
+                        name="college_name"
+                        placeholder="Enter your college/university name"
+                        className="mt-2 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        value={formData.college_name}
+                        onChange={handleChange}
+                      />
+                    )}
                   </div>
 
                   {/* Profession */}
@@ -553,35 +803,70 @@ export default function Profile() {
                     />
                   </div>
 
-                  {/* Current City */}
+                  {/* Current Country */}
                   <div>
-                    <label htmlFor="current_city" className="block text-sm font-medium text-gray-700">
-                      Current City
+                    <label htmlFor="current_country" className="block text-sm font-medium text-gray-700 mb-1">
+                      Current Country
                     </label>
-                    <input
-                      type="text"
-                      id="current_city"
-                      name="current_city"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.current_city}
-                      onChange={handleChange}
+                    <CountrySelect
+                      onChange={(e: any) => {
+                        setCountryId(e.id);
+                        setCountryData(e);
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          current_country: e.name 
+                        }));
+                        // Reset state and city when country changes
+                        setStateId(0);
+                        setCityData(null);
+                        setFormData(prev => ({ ...prev, current_city: '' }));
+                      }}
+                      placeHolder="Select Country"
+                      containerClassName="react-country-state-city-select"
+                      inputClassName="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
                     />
                   </div>
 
-                  {/* Current Country */}
-                  <div>
-                    <label htmlFor="current_country" className="block text-sm font-medium text-gray-700">
-                      Current Country
-                    </label>
-                    <input
-                      type="text"
-                      id="current_country"
-                      name="current_country"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.current_country}
-                      onChange={handleChange}
-                    />
-                  </div>
+                  {/* Current State (Optional - for better city filtering) */}
+                  {countryId !== 0 && (
+                    <div>
+                      <label htmlFor="current_state" className="block text-sm font-medium text-gray-700 mb-1">
+                        State/Province <span className="text-xs text-gray-500">(Optional)</span>
+                      </label>
+                      <StateSelect
+                        countryid={countryId}
+                        onChange={(e: any) => {
+                          setStateId(e.id);
+                        }}
+                        placeHolder="Select State"
+                        containerClassName="react-country-state-city-select"
+                        inputClassName="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      />
+                    </div>
+                  )}
+
+                  {/* Current City */}
+                  {countryId !== 0 && (
+                    <div>
+                      <label htmlFor="current_city" className="block text-sm font-medium text-gray-700 mb-1">
+                        Current City
+                      </label>
+                      <CitySelect
+                        countryid={countryId}
+                        stateid={stateId}
+                        onChange={(e: any) => {
+                          setCityData(e);
+                          setFormData(prev => ({ 
+                            ...prev, 
+                            current_city: e.name 
+                          }));
+                        }}
+                        placeHolder="Select City"
+                        containerClassName="react-country-state-city-select"
+                        inputClassName="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      />
+                    </div>
+                  )}
 
                   {/* LinkedIn */}
                   <div>
@@ -694,188 +979,175 @@ export default function Profile() {
                       onChange={handleChange}
                     />
                   </div>
-                </div>
 
-                {/* Bio */}
-                <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
-                    Bio
-                  </label>
-                  <textarea
-                    id="bio"
-                    name="bio"
-                    rows={4}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                    placeholder="Tell us about yourself..."
-                    value={formData.bio}
-                    onChange={handleChange}
-                  />
-                </div>
+                  {/* Bio */}
+                  <div>
+                    <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
+                      Bio
+                    </label>
+                    <textarea
+                      id="bio"
+                      name="bio"
+                      rows={4}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                      placeholder="Tell us about yourself..."
+                      value={formData.bio}
+                      onChange={handleChange}
+                    />
+                  </div>
 
-                {/* Save */}
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark flex items-center transition-colors"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Profile
-                  </button>
-                </div>
-              </form>
+                  {/* Save Button */}
+                  <div className="flex justify-end pt-8">
+                    <button
+                      type="submit"
+                      className="btn-primary group"
+                    >
+                      <Save className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
+                      Save Profile
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
             ) : (
-              /* View Mode */
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Email */}
-                  <div className="flex items-center">
-                    <Mail className="h-5 w-5 text-gray-400 mr-3" />
+              <motion.div
+                key="viewing"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="p-8"
+              >
+                {/* View Mode */}
+                <div className="space-y-8">
+                  {/* Contact Information Section */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="h-10 w-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">Contact Information</h2>
+                        <p className="text-sm text-gray-500">How to reach out</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Email */}
+                      <div className="flex items-center">
+                        <Mail className="h-5 w-5 text-gray-400 mr-3" />
+                        <div>
+                          <p className="text-sm text-gray-500">Email</p>
+                          <p className="text-gray-900">{profile.email}</p>
+                        </div>
+                      </div>
+
+                      {/* Phone */}
+                      {profile.phone && (
+                        <div className="flex items-center">
+                          <Phone className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Phone</p>
+                            <p className="text-gray-900">{profile.phone}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Batch Year */}
+                      {profile.batch_year && (
+                        <div className="flex items-center">
+                          <Calendar className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Batch Year</p>
+                            <p className="text-gray-900">{profile.batch_year}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Gender */}
+                      {profile.gender && (
+                        <div className="flex items-center">
+                          <User className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Gender</p>
+                            <p className="text-gray-900 capitalize">{profile.gender.replace('_', ' ')}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Marital Status */}
+                      {profile.marital_status && (
+                        <div className="flex items-center">
+                          <User className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Marital Status</p>
+                            <p className="text-gray-900 capitalize">{profile.marital_status.replace('_', ' ')}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date of Birth */}
+                      {profile.date_of_birth && (
+                        <div className="flex items-center">
+                          <Calendar className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Date of Birth</p>
+                            <p className="text-gray-900">{new Date(profile.date_of_birth).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Age */}
+                      {profile.age && (
+                        <div className="flex items-center">
+                          <Calendar className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Age</p>
+                            <p className="text-gray-900">{profile.age} years</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* WhatsApp */}
+                      {profile.whatsapp_number && (
+                        <div className="flex items-center">
+                          <Phone className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">WhatsApp</p>
+                            <p className="text-gray-900">{profile.whatsapp_number}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Location */}
+                      {(profile.current_city || profile.current_country) && (
+                        <div className="flex items-center">
+                          <MapPin className="h-5 w-5 text-gray-400 mr-3" />
+                          <div>
+                            <p className="text-sm text-gray-500">Location</p>
+                            <p className="text-gray-900">
+                              {profile.current_city}
+                              {profile.current_city && profile.current_country && ', '}
+                              {profile.current_country}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bio */}
+                  {profile.bio && (
                     <div>
-                      <p className="text-sm text-gray-500">Email</p>
-                      <p className="text-gray-900">{profile.email}</p>
-                    </div>
-                  </div>
-
-                  {/* Phone */}
-                  {profile.phone && (
-                    <div className="flex items-center">
-                      <Phone className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Phone</p>
-                        <p className="text-gray-900">{profile.phone}</p>
-                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">About</h3>
+                      <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
                     </div>
                   )}
 
-                  {/* Batch Year */}
-                  {profile.batch_year && (
-                    <div className="flex items-center">
-                      <Calendar className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Batch Year</p>
-                        <p className="text-gray-900">{profile.batch_year}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Gender */}
-                  {profile.gender && (
-                    <div className="flex items-center">
-                      <User className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Gender</p>
-                        <p className="text-gray-900 capitalize">{profile.gender.replace('_', ' ')}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Marital Status */}
-                  {profile.marital_status && (
-                    <div className="flex items-center">
-                      <User className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Marital Status</p>
-                        <p className="text-gray-900 capitalize">{profile.marital_status.replace('_', ' ')}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Date of Birth */}
-                  {profile.date_of_birth && (
-                    <div className="flex items-center">
-                      <Calendar className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Date of Birth</p>
-                        <p className="text-gray-900">{new Date(profile.date_of_birth).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Age */}
-                  {profile.age && (
-                    <div className="flex items-center">
-                      <Calendar className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Age</p>
-                        <p className="text-gray-900">{profile.age} years</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* College Name */}
-                  {profile.college_name && (
-                    <div className="flex items-center">
-                      <User className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">College/University</p>
-                        <p className="text-gray-900">{profile.college_name}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Profession */}
-                  {profile.profession && (
-                    <div className="flex items-center">
-                      <User className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Profession</p>
-                        <p className="text-gray-900">{profile.profession}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Company Name */}
-                  {profile.company_name && (
-                    <div className="flex items-center">
-                      <User className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Company/Business</p>
-                        <p className="text-gray-900">{profile.company_name}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* WhatsApp */}
-                  {profile.whatsapp_number && (
-                    <div className="flex items-center">
-                      <Phone className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">WhatsApp</p>
-                        <p className="text-gray-900">{profile.whatsapp_number}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Location */}
-                  {(profile.current_city || profile.current_country) && (
-                    <div className="flex items-center">
-                      <MapPin className="h-5 w-5 text-gray-400 mr-3" />
-                      <div>
-                        <p className="text-sm text-gray-500">Location</p>
-                        <p className="text-gray-900">
-                          {profile.current_city}
-                          {profile.current_city && profile.current_country && ', '}
-                          {profile.current_country}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bio */}
-                {profile.bio && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">About</h3>
-                    <p className="text-gray-700 leading-relaxed">{profile.bio}</p>
-                  </div>
-                )}
-
-                {/* Links */}
-                {(profile.linkedin_url || profile.github_url || profile.portfolio_url || 
-                  profile.facebook_url || profile.instagram_url || profile.twitter_url || profile.snapchat_url) && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">Links & Social Media</h3>
-                    <div className="flex flex-wrap gap-3">
+                  {/* Links */}
+                  {(profile.linkedin_url || profile.github_url || profile.portfolio_url || 
+                    profile.facebook_url || profile.instagram_url || profile.twitter_url || profile.snapchat_url) && (
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">Links & Social Media</h3>
+                      <div className="flex flex-wrap gap-3">
                       {profile.linkedin_url && (
                         <a
                           href={profile.linkedin_url}
@@ -953,14 +1225,15 @@ export default function Profile() {
                           Snapchat
                         </a>
                       )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
