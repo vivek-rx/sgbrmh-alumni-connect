@@ -17,6 +17,9 @@ export default function Profile() {
     date_of_birth: '',
     age: '',
     bio: '',
+    college_name: '',
+    profession: '',
+    company_name: '',
     whatsapp_number: '',
     facebook_url: '',
     instagram_url: '',
@@ -41,6 +44,9 @@ export default function Profile() {
         date_of_birth: profile.date_of_birth || '',
         age: profile.age?.toString() || '',
         bio: profile.bio || '',
+        college_name: profile.college_name || '',
+        profession: profile.profession || '',
+        company_name: profile.company_name || '',
         whatsapp_number: profile.whatsapp_number || '',
         facebook_url: profile.facebook_url || '',
         instagram_url: profile.instagram_url || '',
@@ -63,6 +69,9 @@ export default function Profile() {
         date_of_birth: '',
         age: '',
         bio: '',
+        college_name: '',
+        profession: '',
+        company_name: '',
         whatsapp_number: '',
         facebook_url: '',
         instagram_url: '',
@@ -76,6 +85,24 @@ export default function Profile() {
       });
     }
   }, [profile, user, loading]);
+
+  // Calculate age automatically when date_of_birth changes
+  useEffect(() => {
+    if (formData.date_of_birth) {
+      const birthDate = new Date(formData.date_of_birth);
+      const today = new Date();
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+      
+      if (calculatedAge >= 0 && calculatedAge <= 150) {
+        setFormData(prev => ({ ...prev, age: calculatedAge.toString() }));
+      }
+    }
+  }, [formData.date_of_birth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +129,9 @@ export default function Profile() {
         date_of_birth: formData.date_of_birth || null,
         age: formData.age ? parseInt(formData.age) : null,
         bio: formData.bio?.trim() || null,
+        college_name: formData.college_name?.trim() || null,
+        profession: formData.profession?.trim() || null,
+        company_name: formData.company_name?.trim() || null,
         whatsapp_number: formData.whatsapp_number?.trim() || null,
         facebook_url: formData.facebook_url?.trim() || null,
         instagram_url: formData.instagram_url?.trim() || null,
@@ -415,34 +445,90 @@ export default function Profile() {
                     </select>
                   </div>
 
-                  {/* Date of Birth */}
+                  {/* Date of Birth - Modern Date Picker */}
                   <div>
-                    <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="date_of_birth" className="block text-sm font-medium text-gray-700 mb-1">
                       Date of Birth
                     </label>
+                    <div className="relative">
+                      <input
+                        type="date"
+                        id="date_of_birth"
+                        name="date_of_birth"
+                        className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
+                        value={formData.date_of_birth}
+                        onChange={handleChange}
+                        max={new Date().toISOString().split('T')[0]}
+                        style={{
+                          colorScheme: 'light',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'textfield'
+                        }}
+                      />
+                      <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* Age - Auto-calculated */}
+                  <div>
+                    <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
+                      Age <span className="text-xs text-gray-500">(Auto-calculated)</span>
+                    </label>
                     <input
-                      type="date"
-                      id="date_of_birth"
-                      name="date_of_birth"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.date_of_birth}
+                      type="text"
+                      id="age"
+                      name="age"
+                      className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm bg-gray-50 cursor-not-allowed"
+                      value={formData.age ? `${formData.age} years` : 'Enter date of birth'}
+                      readOnly
+                      disabled
+                    />
+                  </div>
+
+                  {/* College Name */}
+                  <div>
+                    <label htmlFor="college_name" className="block text-sm font-medium text-gray-700 mb-1">
+                      College/University Name
+                    </label>
+                    <input
+                      type="text"
+                      id="college_name"
+                      name="college_name"
+                      placeholder="e.g., University of Pune"
+                      className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      value={formData.college_name}
                       onChange={handleChange}
                     />
                   </div>
 
-                  {/* Age */}
+                  {/* Profession */}
                   <div>
-                    <label htmlFor="age" className="block text-sm font-medium text-gray-700">
-                      Age
+                    <label htmlFor="profession" className="block text-sm font-medium text-gray-700 mb-1">
+                      Profession <span className="text-red-500">*</span>
                     </label>
                     <input
-                      type="number"
-                      id="age"
-                      name="age"
-                      min="16"
-                      max="100"
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
-                      value={formData.age}
+                      type="text"
+                      id="profession"
+                      name="profession"
+                      placeholder="e.g., Software Engineer, Teacher, Business Owner"
+                      className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      value={formData.profession}
+                      onChange={handleChange}
+                    />
+                  </div>
+
+                  {/* Company Name */}
+                  <div>
+                    <label htmlFor="company_name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Company/Business Name <span className="text-xs text-gray-500">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="company_name"
+                      name="company_name"
+                      placeholder="e.g., Google, Self-Employed"
+                      className="mt-1 block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      value={formData.company_name}
                       onChange={handleChange}
                     />
                   </div>
@@ -707,6 +793,39 @@ export default function Profile() {
                       <div>
                         <p className="text-sm text-gray-500">Age</p>
                         <p className="text-gray-900">{profile.age} years</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* College Name */}
+                  {profile.college_name && (
+                    <div className="flex items-center">
+                      <User className="h-5 w-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-500">College/University</p>
+                        <p className="text-gray-900">{profile.college_name}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Profession */}
+                  {profile.profession && (
+                    <div className="flex items-center">
+                      <User className="h-5 w-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-500">Profession</p>
+                        <p className="text-gray-900">{profile.profession}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Company Name */}
+                  {profile.company_name && (
+                    <div className="flex items-center">
+                      <User className="h-5 w-5 text-gray-400 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-500">Company/Business</p>
+                        <p className="text-gray-900">{profile.company_name}</p>
                       </div>
                     </div>
                   )}

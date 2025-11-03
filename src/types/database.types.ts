@@ -14,6 +14,9 @@ export interface Database {
           date_of_birth: string | null;
           age: number | null;
           bio: string | null;
+          college_name: string | null;
+          profession: string | null;
+          company_name: string | null;
           whatsapp_number: string | null;
           facebook_url: string | null;
           instagram_url: string | null;
@@ -43,6 +46,9 @@ export interface Database {
           date_of_birth?: string | null;
           age?: number | null;
           bio?: string | null;
+          college_name?: string | null;
+          profession?: string | null;
+          company_name?: string | null;
           whatsapp_number?: string | null;
           facebook_url?: string | null;
           instagram_url?: string | null;
@@ -72,6 +78,9 @@ export interface Database {
           date_of_birth?: string | null;
           age?: number | null;
           bio?: string | null;
+          college_name?: string | null;
+          profession?: string | null;
+          company_name?: string | null;
           whatsapp_number?: string | null;
           facebook_url?: string | null;
           instagram_url?: string | null;
