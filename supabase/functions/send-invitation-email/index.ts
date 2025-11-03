@@ -15,7 +15,24 @@ serve(async (req) => {
   }
 
   try {
+    // Check if API key is set
+    if (!RESEND_API_KEY) {
+      console.error('RESEND_API_KEY is not set')
+      return new Response(
+        JSON.stringify({ error: 'Email service not configured. Please set RESEND_API_KEY environment variable.' }),
+        {
+          status: 500,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        }
+      )
+    }
+
     const { to, invitedName, inviterName, batchYear, inviteLink } = await req.json()
+
+    console.log('Received request:', { to, invitedName, inviterName, batchYear })
 
     // Validate required fields
     if (!to || !invitedName || !inviterName || !inviteLink) {
@@ -23,12 +40,16 @@ serve(async (req) => {
         JSON.stringify({ error: 'Missing required fields' }),
         {
           status: 400,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
         }
       )
     }
 
     // Send email using Resend
+    console.log('Sending email via Resend...')
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -36,7 +57,7 @@ serve(async (req) => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'SGBRMH Alumni <noreply@yourdomain.com>', // Change this to your verified domain
+        from: 'SGBRMH Alumni <onboarding@resend.dev>', // Using Resend's test domain
         to: [to],
         subject: `${inviterName} invited you to join SGBRMH Alumni Connect`,
         html: `
@@ -98,11 +119,13 @@ serve(async (req) => {
     })
 
     if (!res.ok) {
-      const error = await res.text()
-      throw new Error(`Resend API error: ${error}`)
+      const errorText = await res.text()
+      console.error('Resend API error:', errorText)
+      throw new Error(`Resend API error: ${errorText}`)
     }
 
     const data = await res.json()
+    console.log('Email sent successfully:', data)
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: 200,
@@ -112,8 +135,10 @@ serve(async (req) => {
       },
     })
   } catch (error) {
+    console.error('Function error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: {
