@@ -184,7 +184,7 @@ export default function AuthCallback() {
 
             const { data: inserted, error: insertError } = await supabase
               .from('alumni')
-              .insert([{ id: userId, email, name, verified: true, role: 'user', profile_completed: false, created_at: new Date().toISOString() }])
+              .insert([{ id: userId, email, name, verified: false, role: 'alumni', profile_completed: false, created_at: new Date().toISOString() }])
               .select();
 
             if (insertError) {
@@ -205,11 +205,10 @@ export default function AuthCallback() {
           }
         }
 
-        // Update user verification status in alumni table
+        // Update user last active time (don't auto-verify - admin must approve)
         const { data: updateData, error: updateError } = await supabase
           .from('alumni')
           .update({ 
-            verified: true, 
             last_active: new Date().toISOString() 
           })
           .eq('id', userId)

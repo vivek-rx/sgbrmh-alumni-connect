@@ -61,18 +61,36 @@ export default function ProfileView() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Wait for profile to load
+    if (!currentUserProfile) {
+      console.log('⏳ ProfileView: Waiting for user profile to load...');
+      return;
+    }
+
+    console.log('👤 ProfileView: Current user profile:', { 
+      name: currentUserProfile.name, 
+      verified: currentUserProfile.verified 
+    });
+
     // Check if current user is verified
-    if (!currentUserProfile?.verified) {
+    if (!currentUserProfile.verified) {
+      console.log('❌ ProfileView: User is not verified');
       toast.error('You must be verified to view profiles');
       navigate('/alumni');
       return;
     }
 
+    console.log('✅ ProfileView: User is verified, fetching alumni profile...');
     fetchAlumniProfile();
   }, [id, currentUserProfile, navigate]);
 
   const fetchAlumniProfile = async () => {
-    if (!id) return;
+    if (!id) {
+      console.error('❌ ProfileView: No ID provided');
+      return;
+    }
+
+    console.log('📡 ProfileView: Fetching profile for ID:', id);
 
     try {
       setLoading(true);
@@ -82,16 +100,26 @@ export default function ProfileView() {
         .eq('id', id)
         .single();
 
+      console.log('📡 ProfileView: Supabase response:', { data, error });
+
       if (error) {
-        console.error('Error fetching alumni profile:', error);
-        toast.error('Failed to load profile');
+        console.error('❌ ProfileView: Error fetching alumni profile:', error);
+        toast.error(`Failed to load profile: ${error.message}`);
         navigate('/alumni');
         return;
       }
 
+      if (!data) {
+        console.error('❌ ProfileView: No data returned');
+        toast.error('Profile not found');
+        navigate('/alumni');
+        return;
+      }
+
+      console.log('✅ ProfileView: Profile loaded successfully:', data.name);
       setAlumniProfile(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ ProfileView: Exception:', error);
       toast.error('An error occurred');
       navigate('/alumni');
     } finally {

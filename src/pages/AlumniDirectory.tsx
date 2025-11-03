@@ -473,8 +473,10 @@ export default function AlumniDirectory() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     onClick={() => {
+                      console.log('🔍 Card clicked:', { alumId: alum.id, isVerified, isLoggedIn });
                       if (isVerified) {
-                        navigate(`/alumni/${alum.id}`);
+                        console.log('✅ Navigating to profile:', `/profile/${alum.id}`);
+                        navigate(`/profile/${alum.id}`);
                       } else if (!isLoggedIn) {
                         toast.error('Please login to view full profiles');
                         navigate('/auth/login');
