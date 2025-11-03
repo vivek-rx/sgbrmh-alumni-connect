@@ -157,14 +157,6 @@ export default function ResetPassword() {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <motion.img
-            className="mx-auto h-16 w-16 mb-6"
-            src="/logo.png"
-            alt="Alumni Connect"
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          />
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Reset Your Password
           </h2>
