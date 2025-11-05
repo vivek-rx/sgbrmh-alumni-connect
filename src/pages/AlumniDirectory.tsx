@@ -64,7 +64,7 @@ export default function AlumniDirectory() {
       setAlumni(data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load alumni');
-      toast.error('Failed to load Year Book');
+      toast.error('Failed to load Yearbook');
     } finally {
       setLoading(false);
     }

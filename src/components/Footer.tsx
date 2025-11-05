@@ -32,7 +32,7 @@ export function Footer() {
               </li>
               <li>
                 <Link to="/alumni" className="hover:text-white transition-colors">
-                  Year Book
+                  Yearbook
                 </Link>
               </li>
               <li>

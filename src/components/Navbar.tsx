@@ -16,7 +16,7 @@ export function Navbar() {
 
   const navigation = [
     { name: 'Home', to: '/' },
-    { name: 'Year Book', to: '/alumni' },
+    { name: 'Yearbook', to: '/alumni' },
     { name: 'Jobs', to: '/jobs' },
     { name: 'Events', to: '/events' },
   ];

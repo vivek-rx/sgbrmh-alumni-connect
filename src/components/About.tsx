@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import TypewriterDemo from './TypewriterDemo';
 
 export function About() {
   return (
@@ -15,10 +16,11 @@ export function About() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          
+        {/* Top banner */}
+        <TypewriterDemo />
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Side - Image Collage */}
-          <motion.div 
+          <motion.div
             className="relative"
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
