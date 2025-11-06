@@ -257,8 +257,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('🔍 Auth updateProfile: Search results:', searchData);
 
       if (!searchData || searchData.length === 0) {
-        console.error('❌ Auth updateProfile: No profile found for user ID:', user.id);
-        throw new Error('Profile record not found. You may need to register again.');
+        console.log('⚠️  Auth updateProfile: No profile found, creating new one...');
+        
+        // Create a new profile if it doesn't exist
+        const newProfileData = {
+          id: user.id,
+          email: user.email!,
+          ...updates,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { data: newData, error: insertError } = await supabase
+          .from('alumni')
+          .insert(newProfileData)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('❌ Auth updateProfile: Insert failed:', insertError);
+          throw new Error(`Failed to create profile: ${insertError.message}`);
+        }
+
+        console.log('✅ Auth updateProfile: Profile created successfully:', newData);
+        setProfile(newData);
+        return newData;
       }
 
       const existingProfile = searchData[0];
