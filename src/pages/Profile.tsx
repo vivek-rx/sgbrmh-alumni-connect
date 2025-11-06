@@ -3,6 +3,7 @@ import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X, Briefcase, 
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import AvatarUploader from '../components/AvatarUploader';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -307,6 +308,22 @@ export default function Profile() {
                 onSubmit={handleSubmit}
                 className="space-y-8"
               >
+                {/* Profile Picture Upload */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-4">
+                    Profile Picture (Optional)
+                  </label>
+                  <AvatarUploader
+                    userId={user?.id || ''}
+                    initialAvatarPath={null}
+                    onSaved={async (data) => {
+                      toast.success('Profile picture uploaded!');
+                      // Reload to show the uploaded photo
+                      window.location.reload();
+                    }}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Email (Read-only) */}
                   <div>
@@ -433,7 +450,11 @@ export default function Profile() {
                   <div className="h-28 w-28 bg-white rounded-full flex items-center justify-center overflow-hidden shadow-2xl ring-4 ring-white/30">
                     {profile.profile_photo_url ? (
                       <img
-                        src={profile.profile_photo_url}
+                        src={
+                          profile.profile_photo_url.startsWith('http') 
+                            ? profile.profile_photo_url 
+                            : supabase.storage.from('avatars').getPublicUrl(profile.profile_photo_url).data.publicUrl
+                        }
                         alt="Profile"
                         className="h-full w-full object-cover"
                       />
@@ -537,6 +558,22 @@ export default function Profile() {
                       </div>
                     </div>
                     
+                    {/* Avatar Upload Section */}
+                    <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                      <label className="block text-sm font-semibold text-gray-700 mb-4">
+                        Profile Picture
+                      </label>
+                      <AvatarUploader
+                        userId={profile?.id || user?.id || ''}
+                        initialAvatarPath={profile?.profile_photo_url}
+                        onSaved={async (data) => {
+                          toast.success('Profile picture updated!');
+                          // Reload the page to refresh profile data
+                          window.location.reload();
+                        }}
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 rounded-xl p-6">
                       {/* Full Name */}
                       <div>

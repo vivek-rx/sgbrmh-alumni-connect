@@ -203,7 +203,11 @@ export default function ProfileView() {
               <div className="relative mb-4 sm:mb-0">
                 {alumniProfile.profile_photo_url ? (
                   <img
-                    src={alumniProfile.profile_photo_url}
+                    src={
+                      alumniProfile.profile_photo_url.startsWith('http') 
+                        ? alumniProfile.profile_photo_url 
+                        : supabase.storage.from('avatars').getPublicUrl(alumniProfile.profile_photo_url).data.publicUrl
+                    }
                     alt={alumniProfile.name}
                     className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover"
                   />

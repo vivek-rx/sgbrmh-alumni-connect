@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, ArrowRight, Calendar, Mail, Phone, CheckCircle, Lock } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface AlumniProps {
   id: string;
@@ -42,6 +43,13 @@ export function AlumniCard({ alumni, index = 0, canViewProfile = false }: Alumni
 
   const location = [alumni.current_city, alumni.current_country].filter(Boolean).join(', ');
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(alumni.name)}&background=f97316&color=fff&size=128`;
+  
+  // Generate public URL from storage path
+  const getAvatarUrl = () => {
+    if (!alumni.profile_photo_url) return defaultAvatar;
+    if (alumni.profile_photo_url.startsWith('http')) return alumni.profile_photo_url;
+    return supabase.storage.from('avatars').getPublicUrl(alumni.profile_photo_url).data.publicUrl;
+  };
 
   return (
     <motion.div
@@ -62,7 +70,7 @@ export function AlumniCard({ alumni, index = 0, canViewProfile = false }: Alumni
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-orange-200">
                 <img
-                  src={alumni.profile_photo_url || defaultAvatar}
+                  src={getAvatarUrl()}
                   alt={alumni.name}
                   className="w-full h-full object-cover"
                   onError={(e) => {

@@ -491,7 +491,11 @@ export default function AlumniDirectory() {
                         <div className="h-16 w-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
                           {alum.profile_photo_url ? (
                             <img
-                              src={alum.profile_photo_url}
+                              src={
+                                alum.profile_photo_url.startsWith('http') 
+                                  ? alum.profile_photo_url 
+                                  : supabase.storage.from('avatars').getPublicUrl(alum.profile_photo_url).data.publicUrl
+                              }
                               alt={alum.name}
                               className="h-16 w-16 rounded-full object-cover"
                             />
