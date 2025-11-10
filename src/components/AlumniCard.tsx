@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, ArrowRight, Calendar, Mail, Phone, CheckCircle, Lock } from 'lucide-react';
+import { MapPin, ArrowRight, Calendar, Mail, Phone, Lock } from 'lucide-react';
+import VerifiedBadge from './VerifiedBadge';
 import { supabase } from '@/lib/supabase';
 
 interface AlumniProps {
@@ -78,10 +79,10 @@ export function AlumniCard({ alumni, index = 0, canViewProfile = false }: Alumni
                   }}
                 />
               </div>
-              {/* Verified Badge */}
+              {/* Verified Badge (blue) */}
               {alumni.verified && (
-                <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1">
-                  <CheckCircle className="h-4 w-4 text-white" />
+                <div className="absolute -bottom-1 -right-1 rounded-full p-0.5">
+                  <VerifiedBadge size={18} />
                 </div>
               )}
             </div>
@@ -97,9 +98,9 @@ export function AlumniCard({ alumni, index = 0, canViewProfile = false }: Alumni
               </div>
               
               {alumni.verified && (
-                <span className="inline-flex items-center text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Verified
+                <span className="inline-flex items-center text-xs text-sky-700 bg-sky-100 px-2 py-1 rounded-full">
+                  <VerifiedBadge size={14} className="mr-1" />
+                  <span className="ml-0.5">Verified</span>
                 </span>
               )}
             </div>

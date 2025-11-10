@@ -17,10 +17,10 @@ import {
   Github,
   Camera,
   ArrowLeft,
-  CheckCircle,
   MessageCircle,
   Share2
 } from 'lucide-react';
+import VerifiedBadge from '../components/VerifiedBadge';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -72,8 +72,8 @@ export default function ProfileView() {
       verified: currentUserProfile.verified 
     });
 
-    // Check if current user is verified
-    if (!currentUserProfile.verified) {
+    // Check if current user is verified. Allow the emergency admin email to bypass this.
+    if (!currentUserProfile.verified && user?.email !== 'admin@abmectpune.in') {
       console.log('❌ ProfileView: User is not verified');
       toast.error('You must be verified to view profiles');
       navigate('/alumni');
@@ -190,8 +190,8 @@ export default function ProfileView() {
           <div className="h-48 bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 relative">
             {alumniProfile.verified && (
               <div className="absolute top-4 right-4 bg-white rounded-full px-4 py-2 shadow-lg flex items-center">
-                <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                <span className="text-sm font-semibold text-gray-700">Verified Alumni</span>
+                <VerifiedBadge size={18} />
+                <span className="text-sm font-semibold text-gray-700 ml-2">Verified Alumni</span>
               </div>
             )}
           </div>

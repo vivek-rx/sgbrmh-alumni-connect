@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X, Briefcase, GraduationCap, Link as LinkIcon, Camera, CheckCircle } from 'lucide-react';
+import { User, Mail, Phone, Calendar, MapPin, Globe, Edit3, Save, X, Briefcase, GraduationCap, Link as LinkIcon, Camera } from 'lucide-react';
+import VerifiedBadge from '../components/VerifiedBadge';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -467,9 +468,9 @@ export default function Profile() {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: 0.5 }}
-                      className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-2 shadow-lg ring-4 ring-white"
+                      className="absolute -bottom-2 -right-2 rounded-full p-0.5 shadow-lg ring-4 ring-white"
                     >
-                      <CheckCircle className="h-5 w-5 text-white" />
+                      <VerifiedBadge size={20} />
                     </motion.div>
                   )}
                 </motion.div>

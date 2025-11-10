@@ -3,6 +3,7 @@ import { Search, Users, Loader2, AlertCircle, ArrowLeft, GraduationCap, MapPin, 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth';
+import VerifiedBadge from '../components/VerifiedBadge';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,7 +44,8 @@ export default function AlumniDirectory() {
   const navigate = useNavigate();
 
   const isLoggedIn = !!user;
-  const isVerified = profile?.verified || false;
+  // Treat the hardcoded admin email as implicitly verified so the admin can view yearbook
+  const isVerified = profile?.verified || (user?.email === 'admin@abmectpune.in') || false;
 
   useEffect(() => {
     fetchAlumni();
@@ -488,26 +490,34 @@ export default function AlumniDirectory() {
                   >
                     <div className="p-6">
                       <div className="flex items-center mb-4">
-                        <div className="h-16 w-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
-                          {alum.profile_photo_url ? (
-                            <img
-                              src={
-                                alum.profile_photo_url.startsWith('http') 
-                                  ? alum.profile_photo_url 
-                                  : supabase.storage.from('avatars').getPublicUrl(alum.profile_photo_url).data.publicUrl
-                              }
-                              alt={alum.name}
-                              className="h-16 w-16 rounded-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-8 h-8" />
+                        <div className="relative h-16 w-16 flex-shrink-0">
+                          <div className="h-16 w-16 bg-gradient-to-br from-orange-500 to-red-600 rounded-full overflow-hidden flex items-center justify-center text-white text-2xl font-bold">
+                            {alum.profile_photo_url ? (
+                              <img
+                                src={
+                                  alum.profile_photo_url.startsWith('http')
+                                    ? alum.profile_photo_url
+                                    : supabase.storage.from('avatars').getPublicUrl(alum.profile_photo_url).data.publicUrl
+                                }
+                                alt={alum.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-8 h-8" />
+                            )}
+                          </div>
+                          {alum.verified && (
+                            <div className="absolute -bottom-1 -right-1">
+                              <VerifiedBadge size={20} />
+                            </div>
                           )}
                         </div>
                         <div className="ml-4 flex-1 min-w-0">
                           <h3 className="text-lg font-bold text-gray-900 truncate">{alum.name}</h3>
                           <p className="text-sm text-gray-600">Batch of {alum.batch_year}</p>
                           {alum.verified && (
-                            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                            <span className="inline-flex items-center mt-1 px-2 py-0.5 bg-sky-100 text-sky-700 rounded-full text-xs font-semibold">
+                              <VerifiedBadge size={14} className="mr-1" />
                               Verified
                             </span>
                           )}
